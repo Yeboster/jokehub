@@ -1,0 +1,38 @@
+"use client";
+
+import type { FC } from 'react';
+import type { Joke } from '@/lib/types';
+import { Table, TableBody, TableCaption, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import JokeListItem from './joke-list-item';
+
+interface JokeListProps {
+  jokes: Joke[];
+  onToggleUsed: (id: string) => void;
+}
+
+const JokeList: FC<JokeListProps> = ({ jokes, onToggleUsed }) => {
+  if (jokes.length === 0) {
+    return <p className="text-muted-foreground">No jokes found. Add some!</p>;
+  }
+
+  return (
+    <Table>
+      <TableCaption>A list of your jokes.</TableCaption>
+      <TableHeader>
+        <TableRow>
+          <TableHead className="w-[50%]">Joke</TableHead>
+          <TableHead>Category</TableHead>
+          <TableHead>Date Added</TableHead>
+          <TableHead className="text-center">Used</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {jokes.map((joke) => (
+          <JokeListItem key={joke.id} joke={joke} onToggleUsed={onToggleUsed} />
+        ))}
+      </TableBody>
+    </Table>
+  );
+};
+
+export default JokeList;
