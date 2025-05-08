@@ -9,13 +9,7 @@ import { useState, useRef } from 'react';
 import type { Joke } from '@/lib/types';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+// Select, SelectContent, SelectItem, SelectTrigger, SelectValue removed as they are no longer used
 import { Input } from '@/components/ui/input'; // For new category input
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import StarRating from '@/components/StarRating';
@@ -68,6 +62,8 @@ const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
     setIsCategoryPopoverOpen(open);
     if (open) {
       setEditableCategory(joke.category); // Reset to current joke category on open
+      // Automatically focus the input when popover opens
+      setTimeout(() => categoryInputRef.current?.focus(), 0);
     }
   };
 
@@ -99,30 +95,19 @@ const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
                 list={`category-suggestions-${joke.id}`}
                 placeholder="Type or select category"
                 className="mb-2"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleCategoryUpdate();
+                  }
+                }}
               />
               <datalist id={`category-suggestions-${joke.id}`}>
                 {categoryNames.map((catName) => (
                   <option key={catName} value={catName} />
                 ))}
               </datalist>
-              <Select
-                onValueChange={(value) => {
-                  setEditableCategory(value);
-                  // Optionally, focus input or trigger update if an existing category is selected
-                }}
-                value={categoryNames.includes(editableCategory) ? editableCategory : ""}
-              >
-                <SelectTrigger className="text-xs">
-                  <SelectValue placeholder="Or select existing" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categoryNames.map((name) => (
-                    <SelectItem key={name} value={name} className="text-xs">
-                      {name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {/* Removed the Select component for category selection as it was redundant with the datalist input */}
               <Button onClick={handleCategoryUpdate} size="sm" className="w-full" disabled={isUpdatingCategory || !editableCategory.trim()}>
                 {isUpdatingCategory ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Save Category"}
               </Button>
