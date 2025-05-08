@@ -4,4 +4,5 @@ export interface Joke {
   category: string;
   dateAdded: Date;
   used: boolean;
+  funnyRate: number; // 0 for unrated, 1-5 for rating
 }

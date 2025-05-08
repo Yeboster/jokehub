@@ -1,7 +1,7 @@
 "use client";
 
 import type { FC } from 'react';
-import { Filter, ListFilter } from 'lucide-react';
+import { ListFilter } from 'lucide-react';
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
@@ -17,6 +17,8 @@ interface JokeFiltersProps {
   onShowUsedChange: (show: boolean) => void;
   showUnused: boolean;
   onShowUnusedChange: (show: boolean) => void;
+  filterFunnyRate: number; // -1 for 'Any', 0 for 'Unrated', 1-5 for specific rating
+  onFilterFunnyRateChange: (rating: number) => void;
 }
 
 const JokeFilters: FC<JokeFiltersProps> = ({
@@ -27,6 +29,8 @@ const JokeFilters: FC<JokeFiltersProps> = ({
   onShowUsedChange,
   showUnused,
   onShowUnusedChange,
+  filterFunnyRate,
+  onFilterFunnyRateChange,
 }) => {
   return (
     <Card>
@@ -51,6 +55,27 @@ const JokeFilters: FC<JokeFiltersProps> = ({
                    ))}
                 </SelectContent>
              </Select>
+          </div>
+
+          <Separator />
+
+          <div className="space-y-2">
+            <Label htmlFor="funny-rate-filter">Filter by Funny Rate</Label>
+            <Select
+              value={filterFunnyRate.toString()}
+              onValueChange={(value) => onFilterFunnyRateChange(parseInt(value, 10))}
+            >
+              <SelectTrigger id="funny-rate-filter">
+                <SelectValue placeholder="Select a rating" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="-1">Any Rating</SelectItem>
+                <SelectItem value="0">Unrated</SelectItem>
+                {[1, 2, 3, 4, 5].map(rate => (
+                  <SelectItem key={rate} value={rate.toString()}>{rate} Star{rate > 1 ? 's' : ''}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <Separator />

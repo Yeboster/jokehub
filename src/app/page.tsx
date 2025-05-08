@@ -12,6 +12,7 @@ export default function Home() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [showUsed, setShowUsed] = useState<boolean>(true);
   const [showUnused, setShowUnused] = useState<boolean>(true);
+  const [filterFunnyRate, setFilterFunnyRate] = useState<number>(-1); // -1 for 'Any'
 
   const uniqueCategories = useMemo(() => {
     if (!jokes) return [];
@@ -24,15 +25,14 @@ export default function Home() {
     return jokes.filter(joke => {
       const categoryMatch = selectedCategory === 'all' || joke.category === selectedCategory;
       const usageMatch = (showUsed && joke.used) || (showUnused && !joke.used);
-      // If neither showUsed nor showUnused is checked, show nothing related to usage
       const usageFilterActive = showUsed || showUnused;
-      return categoryMatch && (!usageFilterActive || usageMatch);
-    });
-  }, [jokes, selectedCategory, showUsed, showUnused]);
+      const funnyRateMatch = filterFunnyRate === -1 || joke.funnyRate === filterFunnyRate;
 
-  // Handle loading state if jokes are not yet available from context/localStorage
+      return categoryMatch && (!usageFilterActive || usageMatch) && funnyRateMatch;
+    });
+  }, [jokes, selectedCategory, showUsed, showUnused, filterFunnyRate]);
+
   if (jokes === null) {
-    // Optionally return a loading skeleton here
     return <div className="container mx-auto p-4 md:p-8">Loading jokes...</div>;
   }
 
@@ -49,6 +49,8 @@ export default function Home() {
           onShowUsedChange={setShowUsed}
           showUnused={showUnused}
           onShowUnusedChange={setShowUnused}
+          filterFunnyRate={filterFunnyRate}
+          onFilterFunnyRateChange={setFilterFunnyRate}
         />
       </div>
 

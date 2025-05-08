@@ -20,8 +20,9 @@ const JokeList: FC<JokeListProps> = ({ jokes, onToggleUsed }) => {
       <TableCaption>A list of your jokes.</TableCaption>
       <TableHeader>
         <TableRow>
-          <TableHead className="w-[50%]">Joke</TableHead>
+          <TableHead className="w-[40%]">Joke</TableHead>
           <TableHead>Category</TableHead>
+          <TableHead>Rating</TableHead>
           <TableHead>Date Added</TableHead>
           <TableHead className="text-center">Used</TableHead>
         </TableRow>

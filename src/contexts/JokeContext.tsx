@@ -9,9 +9,10 @@ const generateId = (): string => `joke_${Date.now()}_${Math.random().toString(36
 
 interface JokeContextProps {
   jokes: Joke[] | null; // null indicates loading state
-  addJoke: (newJokeData: { text: string; category: string }) => void;
+  addJoke: (newJokeData: { text: string; category: string; funnyRate?: number }) => void;
   importJokes: (importedJokesData: Omit<Joke, 'id' | 'used' | 'dateAdded'>[]) => void;
   toggleUsed: (id: string) => void;
+  rateJoke: (id: string, rating: number) => void;
 }
 
 const JokeContext = createContext<JokeContextProps | undefined>(undefined);
@@ -28,10 +29,11 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
       let initialJokes: Joke[] = [];
       if (storedJokes) {
         try {
-          // Need to parse date strings back into Date objects
+          // Need to parse date strings back into Date objects and handle funnyRate
           initialJokes = JSON.parse(storedJokes).map((joke: any) => ({
             ...joke,
             dateAdded: new Date(joke.dateAdded),
+            funnyRate: joke.funnyRate !== undefined ? joke.funnyRate : 0, // Default if missing
           }));
         } catch (e) {
           console.error("Failed to parse jokes from localStorage", e);
@@ -49,10 +51,12 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [jokes, isClient]);
 
-  const addJoke = useCallback((newJokeData: { text: string; category: string }) => {
+  const addJoke = useCallback((newJokeData: { text: string; category: string; funnyRate?: number }) => {
     const newJoke: Joke = {
       id: generateId(),
-      ...newJokeData,
+      text: newJokeData.text,
+      category: newJokeData.category,
+      funnyRate: newJokeData.funnyRate !== undefined ? newJokeData.funnyRate : 0,
       dateAdded: new Date(),
       used: false,
     };
@@ -63,6 +67,7 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const newJokes: Joke[] = importedJokesData.map(jokeData => ({
       id: generateId(),
       ...jokeData,
+      funnyRate: jokeData.funnyRate !== undefined ? jokeData.funnyRate : 0,
       dateAdded: new Date(),
       used: false,
     }));
@@ -79,11 +84,22 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
   }, []);
 
+  const rateJoke = useCallback((id: string, rating: number) => {
+    setJokes(prevJokes =>
+      prevJokes
+        ? prevJokes.map(joke =>
+            joke.id === id ? { ...joke, funnyRate: rating } : joke
+          )
+        : []
+    );
+  }, []);
+
   const value = {
     jokes,
     addJoke,
     importJokes,
     toggleUsed,
+    rateJoke,
   };
 
   return <JokeContext.Provider value={value}>{children}</JokeContext.Provider>;

@@ -40,7 +40,6 @@ const CSVImport: FC<CSVImportProps> = ({ onImport }) => {
       }
 
       try {
-        // Basic CSV parsing (assumes "text,category" header)
         const lines = text.split('\n').filter(line => line.trim() !== '');
         if (lines.length <= 1) {
           throw new Error('CSV file needs at least one data row.');
@@ -49,6 +48,7 @@ const CSVImport: FC<CSVImportProps> = ({ onImport }) => {
         const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
         const textIndex = headers.indexOf('text');
         const categoryIndex = headers.indexOf('category');
+        const funnyRateIndex = headers.indexOf('funnyrate'); // Optional column
 
         if (textIndex === -1 || categoryIndex === -1) {
           throw new Error('CSV must contain "text" and "category" columns.');
@@ -57,10 +57,14 @@ const CSVImport: FC<CSVImportProps> = ({ onImport }) => {
         const importedJokes: Omit<Joke, 'id' | 'used' | 'dateAdded'>[] = [];
         for (let i = 1; i < lines.length; i++) {
           const values = lines[i].split(','); // Simple split, doesn't handle commas within quotes
-           if (values.length > categoryIndex && values[textIndex]?.trim() && values[categoryIndex]?.trim()) {
+           if (values.length > Math.max(textIndex, categoryIndex) && values[textIndex]?.trim() && values[categoryIndex]?.trim()) {
+             const funnyRateValue = funnyRateIndex !== -1 && values[funnyRateIndex]?.trim() ? parseInt(values[funnyRateIndex].trim(), 10) : 0;
+             const rate = (isNaN(funnyRateValue) || funnyRateValue < 0 || funnyRateValue > 5) ? 0 : funnyRateValue;
+             
              importedJokes.push({
                text: values[textIndex].trim(),
                category: values[categoryIndex].trim(),
+               funnyRate: rate,
              });
            } else {
               console.warn(`Skipping invalid row ${i+1}: ${lines[i]}`);
@@ -89,7 +93,6 @@ const CSVImport: FC<CSVImportProps> = ({ onImport }) => {
         });
       } finally {
         setIsLoading(false);
-        // Reset file input
         if (fileInputRef.current) {
             fileInputRef.current.value = '';
         }
@@ -116,7 +119,7 @@ const CSVImport: FC<CSVImportProps> = ({ onImport }) => {
       <CardHeader>
         <CardTitle>Import Jokes from CSV</CardTitle>
         <CardDescription>
-          Upload a CSV file with "text" and "category" columns.
+          Upload a CSV file with "text", "category", and optionally "funnyrate" (0-5) columns.
         </CardDescription>
       </CardHeader>
       <CardContent>
