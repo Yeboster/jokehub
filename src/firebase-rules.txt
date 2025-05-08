@@ -9,10 +9,36 @@ service cloud.firestore {
       allow read: if request.auth != null && resource.data.userId == request.auth.uid;
 
       // Allow create access to any authenticated user, ensuring userId matches auth.uid
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      // and category is a non-empty string.
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid
+                      && request.resource.data.category is string
+                      && request.resource.data.category.size() > 0;
 
       // Allow update and delete access only to the user who owns the joke
-      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+      // Ensure category remains a non-empty string if updated.
+      allow update: if request.auth != null && resource.data.userId == request.auth.uid
+                      && (request.resource.data.category == resource.data.category || 
+                         (request.resource.data.category is string && request.resource.data.category.size() > 0));
+      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+
+    // Categories collection rules
+    match /categories/{categoryId} {
+      // Allow read access to any authenticated user for their own categories
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+
+      // Allow create access to any authenticated user, ensuring userId matches auth.uid
+      // and name is a non-empty string.
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid
+                      && request.resource.data.name is string 
+                      && request.resource.data.name.size() > 0;
+      
+      // Categories are generally not updated (name change implies new category)
+      // or deleted (could orphan jokes, or requires more complex logic).
+      // For simplicity, disallow update/delete. If needed, these can be added
+      // with specific constraints (e.g., only if no jokes reference it for delete).
+      allow update: if false; 
+      allow delete: if false;
     }
 
     // Add rules for other collections if needed, for example:

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect } from 'react';
@@ -14,21 +13,18 @@ import { Loader2, Laugh } from 'lucide-react';
 
 export default function Home() {
   const { user, loading: authLoading } = useAuth();
-  const { jokes } = useJokes(); // jokes can be null if loading from JokeContext
+  // jokes and categories can be null if loading from JokeContext
+  const { jokes, categories } = useJokes(); 
   
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [showUsed, setShowUsed] = useState<boolean>(true);
   const [showUnused, setShowUnused] = useState<boolean>(true);
   const [filterFunnyRate, setFilterFunnyRate] = useState<number>(-1);
 
-  const uniqueCategories = useMemo(() => {
-    if (!jokes) return []; // jokes can be null
-    const categories = new Set(jokes.map(joke => joke.category));
-    return Array.from(categories).sort();
-  }, [jokes]);
+  // uniqueCategories memo removed, JokeFilters gets categories from context
 
   const filteredJokes = useMemo(() => {
-    if (!jokes) return []; // jokes can be null
+    if (!jokes) return []; 
     return jokes.filter(joke => {
       const categoryMatch = selectedCategory === 'all' || joke.category === selectedCategory;
       const usageMatch = (showUsed && joke.used) || (showUnused && !joke.used);
@@ -63,12 +59,12 @@ export default function Home() {
     );
   }
   
-  // User is logged in, but jokes might still be loading from JokeContext
-  if (jokes === null) {
+  // User is logged in, but jokes or categories might still be loading
+  if (jokes === null || categories === null) {
     return (
       <div className="container mx-auto p-4 md:p-8 flex flex-col justify-center items-center min-h-[calc(100vh-8rem)]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="mt-2 text-muted-foreground">Loading your jokes from the cosmic cloud...</p>
+        <p className="mt-2 text-muted-foreground">Loading your data from the cosmic cloud...</p>
       </div>
     );
   }
@@ -78,8 +74,8 @@ export default function Home() {
       <Header title="Your Personal Joke Hub" />
 
       <div className="mb-8">
+        {/* JokeFilters no longer needs categories prop, it gets them from context */}
         <JokeFilters
-          categories={uniqueCategories}
           selectedCategory={selectedCategory}
           onCategoryChange={setSelectedCategory}
           showUsed={showUsed}

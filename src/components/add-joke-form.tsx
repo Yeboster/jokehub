@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { FC } from 'react';
@@ -14,12 +13,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useAuth } from '@/contexts/AuthContext'; // Import useAuth
+import { useAuth } from '@/contexts/AuthContext';
+import { useJokes } from '@/contexts/JokeContext'; // Import useJokes
 import Link from 'next/link';
 
 const jokeFormSchema = z.object({
   text: z.string().min(1, 'Joke text cannot be empty.'),
-  category: z.string().min(1, 'Category cannot be empty.'),
+  category: z.string().min(1, 'Category cannot be empty. Type a new one or select from suggestions.').trim(),
   funnyRate: z.coerce.number().min(0).max(5).optional().default(0),
 });
 
@@ -27,13 +27,14 @@ type JokeFormValues = z.infer<typeof jokeFormSchema>;
 
 interface AddJokeFormProps {
   onAddJoke: (data: JokeFormValues) => Promise<void>;
-  categories: string[];
+  // categories prop removed, will get from context
 }
 
-const AddJokeForm: FC<AddJokeFormProps> = ({ onAddJoke, categories }) => {
+const AddJokeForm: FC<AddJokeFormProps> = ({ onAddJoke }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { user } = useAuth(); // Get user state
-  
+  const { user } = useAuth();
+  const { categories } = useJokes(); // Get categories from context
+
   const form = useForm<JokeFormValues>({
     resolver: zodResolver(jokeFormSchema),
     defaultValues: {
@@ -45,22 +46,23 @@ const AddJokeForm: FC<AddJokeFormProps> = ({ onAddJoke, categories }) => {
 
   const onSubmit: SubmitHandler<JokeFormValues> = async (data) => {
     if (!user) {
-      // This should ideally be caught by disabling the form, but as a safeguard:
       form.setError("root", {message: "You must be logged in to add a joke."});
       return;
     }
     setIsSubmitting(true);
     try {
-      await onAddJoke(data);
+      await onAddJoke(data); // onAddJoke is JokeContext.addJoke, which handles category creation
       form.reset();
     } catch (error) {
-      console.error("Failed to add joke from form:", error)
+      console.error("Failed to add joke from form:", error);
+      // Toasting for specific errors is handled in JokeContext
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const isFormDisabled = !user || isSubmitting;
+  const categoryNames = Array.isArray(categories) ? categories.map(cat => cat.name) : [];
 
   return (
     <Card>
@@ -98,11 +100,11 @@ const AddJokeForm: FC<AddJokeFormProps> = ({ onAddJoke, categories }) => {
                 <FormItem>
                   <FormLabel>Category</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., Programming, Dad Jokes" {...field} list="category-suggestions" disabled={isFormDisabled}/>
+                    <Input placeholder="e.g., Programming, Dad Jokes (type new or select)" {...field} list="category-suggestions" disabled={isFormDisabled || categories === null}/>
                   </FormControl>
                    <datalist id="category-suggestions">
-                    {categories.map((cat) => (
-                      <option key={cat} value={cat} />
+                    {categoryNames.map((catName) => (
+                      <option key={catName} value={catName} />
                     ))}
                   </datalist>
                   <FormMessage />

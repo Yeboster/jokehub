@@ -8,21 +8,21 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { useJokes } from '@/contexts/JokeContext'; // Import useJokes
 
 interface JokeFiltersProps {
-  categories: string[];
+  // categories prop removed
   selectedCategory: string;
   onCategoryChange: (category: string) => void;
   showUsed: boolean;
   onShowUsedChange: (show: boolean) => void;
   showUnused: boolean;
   onShowUnusedChange: (show: boolean) => void;
-  filterFunnyRate: number; // -1 for 'Any', 0 for 'Unrated', 1-5 for specific rating
+  filterFunnyRate: number;
   onFilterFunnyRateChange: (rating: number) => void;
 }
 
 const JokeFilters: FC<JokeFiltersProps> = ({
-  categories,
   selectedCategory,
   onCategoryChange,
   showUsed,
@@ -32,6 +32,10 @@ const JokeFilters: FC<JokeFiltersProps> = ({
   filterFunnyRate,
   onFilterFunnyRateChange,
 }) => {
+  const { categories } = useJokes(); // Get categories from context
+  const categoryNames = Array.isArray(categories) ? categories.map(cat => cat.name).sort() : [];
+
+
   return (
     <Card>
        <CardHeader>
@@ -42,15 +46,15 @@ const JokeFilters: FC<JokeFiltersProps> = ({
        <CardContent className="space-y-4">
           <div className="space-y-2">
              <Label htmlFor="category-filter">Filter by Category</Label>
-             <Select value={selectedCategory} onValueChange={onCategoryChange}>
+             <Select value={selectedCategory} onValueChange={onCategoryChange} disabled={categories === null}>
                 <SelectTrigger id="category-filter">
-                   <SelectValue placeholder="Select a category" />
+                   <SelectValue placeholder={categories === null ? "Loading categories..." : "Select a category"} />
                 </SelectTrigger>
                 <SelectContent>
                    <SelectItem value="all">All Categories</SelectItem>
-                   {categories.map((category) => (
-                      <SelectItem key={category} value={category}>
-                         {category}
+                   {categoryNames.map((categoryName) => (
+                      <SelectItem key={categoryName} value={categoryName}>
+                         {categoryName}
                       </SelectItem>
                    ))}
                 </SelectContent>

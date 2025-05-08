@@ -1,7 +1,6 @@
-
 "use client";
 
-import { useMemo, useEffect } from 'react';
+import { useEffect } from 'react';
 import AddJokeForm from '@/components/add-joke-form';
 import CSVImport from '@/components/csv-import';
 import Header from '@/components/header';
@@ -12,7 +11,9 @@ import { Loader2 } from 'lucide-react';
 
 export default function ManageJokesPage() {
     const { user, loading: authLoading } = useAuth();
-    const { jokes, addJoke, importJokes } = useJokes(); // jokes can be null if loading from JokeContext
+    // AddJokeForm will get categories from context itself.
+    // Jokes and categories can be null if loading from JokeContext
+    const { jokes, categories, addJoke, importJokes } = useJokes(); 
     const router = useRouter();
 
     useEffect(() => {
@@ -21,13 +22,8 @@ export default function ManageJokesPage() {
         }
     }, [user, authLoading, router]);
 
-    const uniqueCategories = useMemo(() => {
-        if (!jokes) return []; // jokes can be null
-        const categories = new Set(jokes.map(joke => joke.category));
-        return Array.from(categories).sort();
-    }, [jokes]);
-
-    if (authLoading || (!user && !authLoading)) {
+    // Combined loading state for auth, jokes, and categories
+    if (authLoading || (!user && !authLoading)) { // Auth check first
         return (
             <div className="container mx-auto p-4 md:p-8 flex flex-col justify-center items-center min-h-[calc(100vh-8rem)]">
                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -35,13 +31,12 @@ export default function ManageJokesPage() {
             </div>
         );
     }
-
-    // Jokes might still be loading from JokeContext after auth is confirmed
-    if (jokes === null) {
+    
+    if (jokes === null || categories === null) { // Then check for jokes/categories data
       return (
         <div className="container mx-auto p-4 md:p-8 flex flex-col justify-center items-center min-h-[calc(100vh-8rem)]">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="mt-2 text-muted-foreground">Loading your jokes...</p>
+          <p className="mt-2 text-muted-foreground">Loading your data...</p>
         </div>
       );
     }
@@ -51,7 +46,8 @@ export default function ManageJokesPage() {
             <Header title="Manage Your Jokes" />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <AddJokeForm onAddJoke={addJoke} categories={uniqueCategories} />
+                {/* AddJokeForm no longer needs categories prop, it gets them from context */}
+                <AddJokeForm onAddJoke={addJoke} /> 
                 <CSVImport onImport={importJokes} />
             </div>
         </div>
