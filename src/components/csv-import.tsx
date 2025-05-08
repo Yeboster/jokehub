@@ -1,20 +1,21 @@
-
 "use client";
 
 import type { FC, ChangeEvent } from 'react';
 import { useState, useRef } from 'react';
 import { Upload, ShieldAlert } from 'lucide-react';
+import Link from 'next/link';
 
-import type { Joke } from '@/lib/types';
+import type { Joke } from '@/lib/types'; // Ensure this path and type are correct
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext'; // Import useAuth
-import Link from 'next/link';
+import { useToast } from '@/hooks/use-toast'; // Ensure this path is correct
+import { useAuth } from '@/contexts/AuthContext'; // Ensure this path is correct
 
 interface CSVImportProps {
+  // Defines the expected structure of jokes after parsing from CSV, before adding to DB
   onImport: (jokes: Omit<Joke, 'id' | 'used' | 'dateAdded' | 'userId'>[]) => Promise<void>;
 }
 
@@ -22,14 +23,21 @@ const CSVImport: FC<CSVImportProps> = ({ onImport }) => {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { user } = useAuth(); // Get user state
+  const { user } = useAuth(); // Get user state from AuthContext
 
+  // Handles the CSV file selection and processing
   const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    // Check if user is logged in
     if (!user) {
-      toast({ title: 'Authentication Required', description: 'Please log in to import jokes.', variant: 'destructive' });
+      toast({
+        title: 'Authentication Required',
+        description: 'Please log in to import jokes.',
+        variant: 'destructive',
+      });
       if (fileInputRef.current) fileInputRef.current.value = ''; // Clear file input
       return;
     }
+
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -49,55 +57,113 @@ const CSVImport: FC<CSVImportProps> = ({ onImport }) => {
       }
 
       try {
+        // Split file content into lines and remove empty lines
         const lines = text.split('\n').filter(line => line.trim() !== '');
-        if (lines.length <= 1) {
-          throw new Error('CSV file needs at least one data row (after headers).');
+        if (lines.length <= 1) { // Must have headers and at least one data row
+          throw new Error('CSV file needs a header row and at least one data row.');
         }
 
-        const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+        // More robust CSV line parser that handles commas within quotes and escaped quotes ("")
+        const parseCSVLine = (line: string): string[] => {
+          const values: string[] = [];
+          let currentValue = '';
+          let inQuotes = false;
+
+          for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            if (char === '"') {
+              // If already in quotes and next char is also a quote, it's an escaped quote
+              if (inQuotes && line[i + 1] === '"') {
+                currentValue += '"';
+                i++; // Skip the next quote
+              } else {
+                inQuotes = !inQuotes; // Toggle inQuotes state
+              }
+            } else if (char === ',' && !inQuotes) {
+              values.push(currentValue); // Push the accumulated value
+              currentValue = ''; // Reset for the next value
+            } else {
+              currentValue += char; // Accumulate character to current value
+            }
+          }
+          values.push(currentValue); // Push the last value
+          return values;
+        };
+
+        // Parse header row and normalize to lowercase
+        const headerCells = parseCSVLine(lines[0]);
+        const headers = headerCells.map(h => h.trim().toLowerCase());
+
+        // Find indices of required and optional columns
         const textIndex = headers.indexOf('text');
         const categoryIndex = headers.indexOf('category');
         const funnyRateIndex = headers.indexOf('funnyrate');
+        // const dateAddedIndex = headers.indexOf('dateadded'); // Example: if you wanted to parse dateAdded
 
+        // Ensure essential columns are present
         if (textIndex === -1 || categoryIndex === -1) {
-          throw new Error('CSV must contain "text" and "category" columns.');
+          throw new Error('CSV must contain "text" and "category" columns in the header.');
         }
 
         const importedJokes: Omit<Joke, 'id' | 'used' | 'dateAdded' | 'userId'>[] = [];
+        // Process data rows (starting from the second line)
         for (let i = 1; i < lines.length; i++) {
-          const values = lines[i].split(','); 
-           if (values.length > Math.max(textIndex, categoryIndex) && values[textIndex]?.trim() && values[categoryIndex]?.trim()) {
-             const funnyRateValue = funnyRateIndex !== -1 && values[funnyRateIndex]?.trim() ? parseInt(values[funnyRateIndex].trim(), 10) : 0;
-             const rate = (isNaN(funnyRateValue) || funnyRateValue < 0 || funnyRateValue > 5) ? 0 : funnyRateValue;
-             
-             importedJokes.push({
-               text: values[textIndex].trim(),
-               category: values[categoryIndex].trim(),
-               funnyRate: rate,
-             });
-           } else {
-              console.warn(`Skipping invalid row ${i+1}: ${lines[i]}`);
-           }
+          const values = parseCSVLine(lines[i]);
+
+          // Check if the row has enough columns and essential fields are not empty
+          if (values.length > Math.max(textIndex, categoryIndex) &&
+              values[textIndex]?.trim() &&
+              values[categoryIndex]?.trim()) {
+
+            let rate = 0; // Default funnyRate
+            // Process funnyRate if column exists and value is present
+            if (funnyRateIndex !== -1 && values[funnyRateIndex]?.trim()) {
+              const parsedRate = parseInt(values[funnyRateIndex].trim(), 10);
+              // Validate parsedRate: must be a number between 0 and 5
+              if (!isNaN(parsedRate) && parsedRate >= 0 && parsedRate <= 5) {
+                rate = parsedRate;
+              } else {
+                console.warn(`Invalid funnyRate value "${values[funnyRateIndex]}" in row ${i + 1}. Using default 0.`);
+                // Optionally, you could toast a warning for invalid rates here too
+              }
+            }
+
+            importedJokes.push({
+              text: values[textIndex].trim(),
+              category: values[categoryIndex].trim(),
+              funnyRate: rate,
+            });
+          } else {
+            // Log a warning for skipped rows if the line itself isn't empty (already filtered)
+            if (lines[i].trim()) {
+                console.warn(`Skipping invalid or incomplete row ${i + 1}: "${lines[i]}". Ensure 'text' and 'category' are present and valid.`);
+            }
+          }
         }
 
         if (importedJokes.length > 0) {
-          await onImport(importedJokes);
+          await onImport(importedJokes); // Call the provided onImport function
+          toast({
+            title: 'Import Successful',
+            description: `${importedJokes.length} joke(s) processed.`,
+          });
         } else {
            toast({
-            title: 'Import Failed',
-            description: 'No valid jokes found in the CSV file.',
-            variant: 'destructive',
+            title: 'Import Information',
+            description: 'No valid jokes found in the CSV file to import.',
+            variant: 'default', // Or 'destructive' if considered an error
           });
         }
 
       } catch (error: any) {
         toast({
           title: 'Import Error',
-          description: error.message || 'Failed to parse CSV file.',
+          description: error.message || 'Failed to parse or process the CSV file.',
           variant: 'destructive',
         });
       } finally {
         setIsLoading(false);
+        // Reset file input so the same file can be selected again if needed
         if (fileInputRef.current) {
             fileInputRef.current.value = '';
         }
@@ -116,9 +182,10 @@ const CSVImport: FC<CSVImportProps> = ({ onImport }) => {
        }
     };
 
-    reader.readAsText(file);
+    reader.readAsText(file); // Start reading the file
   };
 
+  // Determine if the import controls should be disabled
   const isImportDisabled = !user || isLoading;
 
   return (
@@ -126,13 +193,15 @@ const CSVImport: FC<CSVImportProps> = ({ onImport }) => {
       <CardHeader>
         <CardTitle>Import Jokes from CSV</CardTitle>
         <CardDescription>
-          Upload a CSV file with "text", "category", and optionally "funnyrate" (0-5) columns.
+          Upload a CSV file with "text", "category" columns. Optionally include "funnyrate" (0-5).
+          Headers are case-insensitive.
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {/* Display message if user is not logged in */}
         {!user && (
           <div className="mb-4 p-3 rounded-md bg-yellow-50 border border-yellow-200 text-yellow-700 flex items-center">
-            <ShieldAlert className="mr-2 h-5 w-5" />
+            <ShieldAlert className="mr-2 h-5 w-5 flex-shrink-0" />
             <div>
               Please <Link href="/auth?redirect=/manage" className="font-semibold underline hover:text-yellow-800">log in or sign up</Link> to import jokes.
             </div>
@@ -144,16 +213,18 @@ const CSVImport: FC<CSVImportProps> = ({ onImport }) => {
              <Input
                 id="csv-file"
                 type="file"
-                accept=".csv"
+                accept=".csv, text/csv" // Be more specific with accept types
                 onChange={handleFileChange}
                 disabled={isImportDisabled}
                 ref={fileInputRef}
-                className="cursor-pointer file:cursor-pointer file:text-sm file:font-semibold file:text-primary file:bg-accent file:border-none file:rounded-md file:px-3 file:py-1.5 hover:file:bg-primary/10"
+                className="cursor-pointer file:cursor-pointer file:text-sm file:font-semibold file:text-primary file:bg-accent file:border-none file:rounded-md file:px-3 file:py-1.5 hover:file:bg-primary/10 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
              />
-             <Button onClick={() => fileInputRef.current?.click()} disabled={isImportDisabled} variant="outline">
+             {/* This button is an alternative way to trigger the file input, often hidden or styled differently */}
+             {/* <Button onClick={() => fileInputRef.current?.click()} disabled={isImportDisabled} variant="outline">
                 <Upload className="mr-2 h-4 w-4" /> {isLoading ? 'Importing...' : 'Upload'}
-            </Button>
+            </Button> */}
           </div>
+          {isLoading && <p className="text-sm text-muted-foreground mt-2">Processing file, please wait...</p>}
         </div>
       </CardContent>
     </Card>
