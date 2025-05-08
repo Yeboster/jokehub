@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { Joke, Category } from '@/lib/types';
@@ -80,18 +79,31 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const categoriesQuery = query(
       collection(db, CATEGORIES_COLLECTION),
       where('userId', '==', user.uid),
-      orderBy('name', 'asc')
+      orderBy('name', 'asc') // Firestore sorts by name
     );
     const unsubscribeCategories = onSnapshot(categoriesQuery, (snapshot) => {
-      const categoriesData: Category[] = snapshot.docs.map(docSnapshot => ({
-        id: docSnapshot.id,
-        ...docSnapshot.data(),
-      } as Category));
-      setCategories(categoriesData);
+      const processedCategories: Category[] = [];
+      snapshot.docs.forEach(docSnapshot => {
+        const data = docSnapshot.data();
+        // Validate structure and ensure name is a non-empty string
+        if (data && typeof data.name === 'string' && data.name.trim() !== '' && typeof data.userId === 'string') {
+          processedCategories.push({
+            id: docSnapshot.id,
+            name: data.name.trim(), // Use trimmed name
+            userId: data.userId,
+          });
+        } else {
+          // Log a warning for malformed category documents
+          console.warn(`Malformed category document found with id ${docSnapshot.id}, data:`, data);
+        }
+      });
+      // `orderBy` in query should handle sorting, but client-side sort can be added if needed for specific locale
+      // For example: processedCategories.sort((a, b) => a.name.localeCompare(b.name));
+      setCategories(processedCategories);
     }, (error) => {
       console.error('Error fetching categories:', error);
       toast({ title: 'Error', description: 'Could not load categories.', variant: 'destructive' });
-      setCategories([]);
+      setCategories([]); // Fallback to empty array on error
     });
 
     return () => {
