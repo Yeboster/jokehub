@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { Joke, Category } from '@/lib/types';
@@ -29,6 +30,7 @@ interface JokeContextProps {
   importJokes: (importedJokesData: Omit<Joke, 'id' | 'used' | 'dateAdded' | 'userId'>[]) => Promise<void>;
   toggleUsed: (id: string, currentUsedStatus: boolean) => Promise<void>;
   rateJoke: (id: string, rating: number) => Promise<void>;
+  updateJokeCategory: (jokeId: string, newCategoryName: string) => Promise<void>;
 }
 
 const JokeContext = createContext<JokeContextProps | undefined>(undefined);
@@ -246,6 +248,35 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
     [toast, user]
   );
 
+  const updateJokeCategory = useCallback(
+    async (jokeId: string, newRawCategoryName: string) => {
+      if (!user) {
+        toast({ title: 'Authentication Required', description: 'Please log in to update joke category.', variant: 'destructive' });
+        return;
+      }
+      const jokeDocRef = doc(db, JOKES_COLLECTION, jokeId);
+      try {
+        const finalCategoryName = await _ensureCategoryExistsAndAdd(newRawCategoryName, user.uid);
+        await updateDoc(jokeDocRef, { category: finalCategoryName });
+        toast({
+          title: 'Category Updated',
+          description: 'Joke category changed successfully.',
+        });
+      } catch (error) {
+        console.error('Error updating joke category:', error);
+        // Specific toast for category update failure, unless it was a category management issue handled in _ensureCategoryExistsAndAdd
+        if (!(error instanceof Error && error.message.includes("Category"))) {
+            toast({
+              title: 'Error Updating Category',
+              description: 'Failed to update joke category. The new category might have had an issue.',
+              variant: 'destructive',
+            });
+        }
+      }
+    },
+    [toast, user]
+  );
+
   const value = {
     jokes,
     categories,
@@ -253,6 +284,7 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
     importJokes,
     toggleUsed,
     rateJoke,
+    updateJokeCategory,
   };
 
   return <JokeContext.Provider value={value}>{children}</JokeContext.Provider>;
@@ -265,3 +297,4 @@ export const useJokes = (): JokeContextProps => {
   }
   return context;
 };
+
