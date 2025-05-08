@@ -3,7 +3,7 @@
 
 import type { FC, ChangeEvent } from 'react';
 import { useState, useRef } from 'react';
-import { Upload } from 'lucide-react';
+import { Upload, ShieldAlert } from 'lucide-react';
 
 import type { Joke } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -11,17 +11,25 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext'; // Import useAuth
+import Link from 'next/link';
 
 interface CSVImportProps {
-  onImport: (jokes: Omit<Joke, 'id' | 'used' | 'dateAdded'>[]) => Promise<void>;
+  onImport: (jokes: Omit<Joke, 'id' | 'used' | 'dateAdded' | 'userId'>[]) => Promise<void>;
 }
 
 const CSVImport: FC<CSVImportProps> = ({ onImport }) => {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { user } = useAuth(); // Get user state
 
   const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    if (!user) {
+      toast({ title: 'Authentication Required', description: 'Please log in to import jokes.', variant: 'destructive' });
+      if (fileInputRef.current) fileInputRef.current.value = ''; // Clear file input
+      return;
+    }
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -55,7 +63,7 @@ const CSVImport: FC<CSVImportProps> = ({ onImport }) => {
           throw new Error('CSV must contain "text" and "category" columns.');
         }
 
-        const importedJokes: Omit<Joke, 'id' | 'used' | 'dateAdded'>[] = [];
+        const importedJokes: Omit<Joke, 'id' | 'used' | 'dateAdded' | 'userId'>[] = [];
         for (let i = 1; i < lines.length; i++) {
           const values = lines[i].split(','); 
            if (values.length > Math.max(textIndex, categoryIndex) && values[textIndex]?.trim() && values[categoryIndex]?.trim()) {
@@ -73,8 +81,7 @@ const CSVImport: FC<CSVImportProps> = ({ onImport }) => {
         }
 
         if (importedJokes.length > 0) {
-          await onImport(importedJokes); // onImport is now async
-          // Toast for success is handled by the context after successful Firestore operation
+          await onImport(importedJokes);
         } else {
            toast({
             title: 'Import Failed',
@@ -112,6 +119,8 @@ const CSVImport: FC<CSVImportProps> = ({ onImport }) => {
     reader.readAsText(file);
   };
 
+  const isImportDisabled = !user || isLoading;
+
   return (
     <Card>
       <CardHeader>
@@ -121,6 +130,14 @@ const CSVImport: FC<CSVImportProps> = ({ onImport }) => {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {!user && (
+          <div className="mb-4 p-3 rounded-md bg-yellow-50 border border-yellow-200 text-yellow-700 flex items-center">
+            <ShieldAlert className="mr-2 h-5 w-5" />
+            <div>
+              Please <Link href="/auth?redirect=/manage" className="font-semibold underline hover:text-yellow-800">log in or sign up</Link> to import jokes.
+            </div>
+          </div>
+        )}
         <div className="grid w-full max-w-sm items-center gap-1.5">
           <Label htmlFor="csv-file">Select CSV File</Label>
           <div className="flex w-full max-w-sm items-center space-x-2">
@@ -129,11 +146,11 @@ const CSVImport: FC<CSVImportProps> = ({ onImport }) => {
                 type="file"
                 accept=".csv"
                 onChange={handleFileChange}
-                disabled={isLoading}
+                disabled={isImportDisabled}
                 ref={fileInputRef}
                 className="cursor-pointer file:cursor-pointer file:text-sm file:font-semibold file:text-primary file:bg-accent file:border-none file:rounded-md file:px-3 file:py-1.5 hover:file:bg-primary/10"
              />
-             <Button onClick={() => fileInputRef.current?.click()} disabled={isLoading} variant="outline">
+             <Button onClick={() => fileInputRef.current?.click()} disabled={isImportDisabled} variant="outline">
                 <Upload className="mr-2 h-4 w-4" /> {isLoading ? 'Importing...' : 'Upload'}
             </Button>
           </div>

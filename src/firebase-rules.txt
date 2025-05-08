@@ -1,0 +1,23 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Jokes collection rules
+    match /jokes/{jokeId} {
+      // Allow read access to any authenticated user for their own jokes
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+
+      // Allow create access to any authenticated user, ensuring userId matches auth.uid
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+
+      // Allow update and delete access only to the user who owns the joke
+      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+
+    // Add rules for other collections if needed, for example:
+    // match /users/{userId} {
+    //   allow read, write: if request.auth != null && request.auth.uid == userId;
+    // }
+  }
+}

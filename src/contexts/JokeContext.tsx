@@ -14,18 +14,19 @@ import {
   orderBy,
   Timestamp,
   writeBatch,
-  deleteDoc, // Added for completeness, though not explicitly used in UI yet
+  where, // Import where for querying
+  // deleteDoc, // Available if needed
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from './AuthContext'; // Import useAuth
 
 interface JokeContextProps {
   jokes: Joke[] | null; // null indicates loading state
   addJoke: (newJokeData: { text: string; category: string; funnyRate?: number }) => Promise<void>;
-  importJokes: (importedJokesData: Omit<Joke, 'id' | 'used' | 'dateAdded'>[]) => Promise<void>;
+  importJokes: (importedJokesData: Omit<Joke, 'id' | 'used' | 'dateAdded' | 'userId'>[]) => Promise<void>;
   toggleUsed: (id: string, currentUsedStatus: boolean) => Promise<void>;
   rateJoke: (id: string, rating: number) => Promise<void>;
-  // deleteJoke: (id: string) => Promise<void>; // Example for future use
 }
 
 const JokeContext = createContext<JokeContextProps | undefined>(undefined);
@@ -35,23 +36,41 @@ const JOKES_COLLECTION = 'jokes';
 export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [jokes, setJokes] = useState<Joke[] | null>(null);
   const { toast } = useToast();
+  const { user, loading: authLoading } = useAuth(); // Get user and auth loading state
 
   useEffect(() => {
-    const q = query(collection(db, JOKES_COLLECTION), orderBy('dateAdded', 'desc'));
+    // If auth is loading, or no user is logged in, don't fetch jokes / clear existing ones
+    if (authLoading) {
+      setJokes(null); // Indicate loading
+      return;
+    }
+    
+    if (!user) {
+      setJokes([]); // No user, so no jokes to show
+      return; // No cleanup needed if no subscription was made
+    }
+
+    // User is logged in, fetch their jokes
+    const q = query(
+      collection(db, JOKES_COLLECTION),
+      where('userId', '==', user.uid), // Filter by userId
+      orderBy('dateAdded', 'desc')
+    );
 
     const unsubscribe = onSnapshot(
       q,
       (querySnapshot) => {
         const jokesData: Joke[] = [];
-        querySnapshot.forEach((doc) => {
-          const data = doc.data();
+        querySnapshot.forEach((docSnapshot) => {
+          const data = docSnapshot.data();
           jokesData.push({
-            id: doc.id,
+            id: docSnapshot.id,
             text: data.text,
             category: data.category,
             dateAdded: (data.dateAdded as Timestamp).toDate(),
             used: data.used,
             funnyRate: data.funnyRate !== undefined ? data.funnyRate : 0,
+            userId: data.userId, // Ensure userId is part of the Joke type
           });
         });
         setJokes(jokesData);
@@ -60,18 +79,22 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.error('Error fetching jokes from Firestore:', error);
         toast({
           title: 'Error',
-          description: 'Could not load jokes. Please try again later.',
+          description: 'Could not load your jokes. Please try again later.',
           variant: 'destructive',
         });
-        setJokes([]); // Set to empty array on error to stop loading state
+        setJokes([]); // Set to empty array on error
       }
     );
 
-    return () => unsubscribe(); // Cleanup subscription on unmount
-  }, [toast]);
+    return () => unsubscribe(); // Cleanup subscription on unmount or when user/authLoading changes
+  }, [user, authLoading, toast]);
 
   const addJoke = useCallback(
     async (newJokeData: { text: string; category: string; funnyRate?: number }) => {
+      if (!user) {
+        toast({ title: 'Authentication Required', description: 'Please log in to add a joke.', variant: 'destructive' });
+        return;
+      }
       try {
         await addDoc(collection(db, JOKES_COLLECTION), {
           text: newJokeData.text,
@@ -79,6 +102,7 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
           funnyRate: newJokeData.funnyRate !== undefined ? newJokeData.funnyRate : 0,
           dateAdded: Timestamp.now(),
           used: false,
+          userId: user.uid, // Associate joke with the current user
         });
         toast({
           title: 'Success',
@@ -93,11 +117,15 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
       }
     },
-    [toast]
+    [toast, user] // Add user to dependency array
   );
 
   const importJokes = useCallback(
-    async (importedJokesData: Omit<Joke, 'id' | 'used' | 'dateAdded'>[]) => {
+    async (importedJokesData: Omit<Joke, 'id' | 'used' | 'dateAdded' | 'userId'>[]) => {
+      if (!user) {
+        toast({ title: 'Authentication Required', description: 'Please log in to import jokes.', variant: 'destructive' });
+        return;
+      }
       const batch = writeBatch(db);
       importedJokesData.forEach((jokeData) => {
         const docRef = doc(collection(db, JOKES_COLLECTION));
@@ -106,6 +134,7 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
           funnyRate: jokeData.funnyRate !== undefined ? jokeData.funnyRate : 0,
           dateAdded: Timestamp.now(),
           used: false,
+          userId: user.uid, // Associate imported jokes with the current user
         });
       });
 
@@ -124,17 +153,20 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
       }
     },
-    [toast]
+    [toast, user] // Add user to dependency array
   );
 
   const toggleUsed = useCallback(
     async (id: string, currentUsedStatus: boolean) => {
+      if (!user) { // Basic check, though Firestore rules are the main guard
+        toast({ title: 'Authentication Required', description: 'Please log in.', variant: 'destructive' });
+        return;
+      }
       const jokeDocRef = doc(db, JOKES_COLLECTION, id);
       try {
         await updateDoc(jokeDocRef, {
           used: !currentUsedStatus,
         });
-        // Toast can be added here if desired, but onSnapshot will update UI
       } catch (error) {
         console.error('Error toggling joke status in Firestore:', error);
         toast({
@@ -144,17 +176,20 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
       }
     },
-    [toast]
+    [toast, user]
   );
 
   const rateJoke = useCallback(
     async (id: string, rating: number) => {
+      if (!user) { // Basic check
+        toast({ title: 'Authentication Required', description: 'Please log in.', variant: 'destructive' });
+        return;
+      }
       const jokeDocRef = doc(db, JOKES_COLLECTION, id);
       try {
         await updateDoc(jokeDocRef, {
           funnyRate: rating,
         });
-        // Toast can be added here
       } catch (error) {
         console.error('Error rating joke in Firestore:', error);
         toast({
@@ -164,7 +199,7 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
       }
     },
-    [toast]
+    [toast, user]
   );
 
   const value = {

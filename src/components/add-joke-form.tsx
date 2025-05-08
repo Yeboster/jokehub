@@ -5,7 +5,7 @@ import type { FC } from 'react';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Loader2 } from 'lucide-react';
+import { Plus, Loader2, ShieldAlert } from 'lucide-react';
 import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useAuth } from '@/contexts/AuthContext'; // Import useAuth
+import Link from 'next/link';
 
 const jokeFormSchema = z.object({
   text: z.string().min(1, 'Joke text cannot be empty.'),
@@ -30,6 +32,8 @@ interface AddJokeFormProps {
 
 const AddJokeForm: FC<AddJokeFormProps> = ({ onAddJoke, categories }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { user } = useAuth(); // Get user state
+  
   const form = useForm<JokeFormValues>({
     resolver: zodResolver(jokeFormSchema),
     defaultValues: {
@@ -40,17 +44,23 @@ const AddJokeForm: FC<AddJokeFormProps> = ({ onAddJoke, categories }) => {
   });
 
   const onSubmit: SubmitHandler<JokeFormValues> = async (data) => {
+    if (!user) {
+      // This should ideally be caught by disabling the form, but as a safeguard:
+      form.setError("root", {message: "You must be logged in to add a joke."});
+      return;
+    }
     setIsSubmitting(true);
     try {
       await onAddJoke(data);
       form.reset();
     } catch (error) {
-      // Error toast is handled by the context
       console.error("Failed to add joke from form:", error)
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  const isFormDisabled = !user || isSubmitting;
 
   return (
     <Card>
@@ -58,6 +68,14 @@ const AddJokeForm: FC<AddJokeFormProps> = ({ onAddJoke, categories }) => {
         <CardTitle>Add a New Joke</CardTitle>
       </CardHeader>
       <CardContent>
+        {!user && (
+          <div className="mb-4 p-3 rounded-md bg-yellow-50 border border-yellow-200 text-yellow-700 flex items-center">
+            <ShieldAlert className="mr-2 h-5 w-5" />
+            <div>
+              Please <Link href="/auth?redirect=/manage" className="font-semibold underline hover:text-yellow-800">log in or sign up</Link> to add jokes.
+            </div>
+          </div>
+        )}
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
@@ -67,7 +85,7 @@ const AddJokeForm: FC<AddJokeFormProps> = ({ onAddJoke, categories }) => {
                 <FormItem>
                   <FormLabel>Joke Text</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Enter the joke text..." {...field} disabled={isSubmitting} />
+                    <Textarea placeholder="Enter the joke text..." {...field} disabled={isFormDisabled} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -80,7 +98,7 @@ const AddJokeForm: FC<AddJokeFormProps> = ({ onAddJoke, categories }) => {
                 <FormItem>
                   <FormLabel>Category</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., Programming, Dad Jokes" {...field} list="category-suggestions" disabled={isSubmitting}/>
+                    <Input placeholder="e.g., Programming, Dad Jokes" {...field} list="category-suggestions" disabled={isFormDisabled}/>
                   </FormControl>
                    <datalist id="category-suggestions">
                     {categories.map((cat) => (
@@ -100,7 +118,7 @@ const AddJokeForm: FC<AddJokeFormProps> = ({ onAddJoke, categories }) => {
                   <Select
                     onValueChange={(value) => field.onChange(parseInt(value, 10))}
                     defaultValue={field.value?.toString() || "0"}
-                    disabled={isSubmitting}
+                    disabled={isFormDisabled}
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -118,7 +136,10 @@ const AddJokeForm: FC<AddJokeFormProps> = ({ onAddJoke, categories }) => {
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting}>
+             {form.formState.errors.root && (
+                <FormMessage>{form.formState.errors.root.message}</FormMessage>
+             )}
+            <Button type="submit" className="w-full sm:w-auto" disabled={isFormDisabled}>
               {isSubmitting ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (

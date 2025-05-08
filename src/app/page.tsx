@@ -1,33 +1,37 @@
 
 "use client";
 
-import { useState, useMemo } from 'react';
-import { useJokes } from '@/contexts/JokeContext'; // Import useJokes hook
+import { useState, useMemo, useEffect } from 'react';
+import { useJokes } from '@/contexts/JokeContext';
+import { useAuth } from '@/contexts/AuthContext';
 import Header from '@/components/header';
 import JokeFilters from '@/components/joke-filters';
 import JokeList from '@/components/joke-list';
 import { Separator } from '@/components/ui/separator';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+import { Loader2, Laugh } from 'lucide-react';
 
 export default function Home() {
-  const { jokes } = useJokes(); // toggleUsed is no longer needed here directly
+  const { user, loading: authLoading } = useAuth();
+  const { jokes } = useJokes(); // jokes can be null if loading from JokeContext
+  
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [showUsed, setShowUsed] = useState<boolean>(true);
   const [showUnused, setShowUnused] = useState<boolean>(true);
-  const [filterFunnyRate, setFilterFunnyRate] = useState<number>(-1); // -1 for 'Any'
+  const [filterFunnyRate, setFilterFunnyRate] = useState<number>(-1);
 
   const uniqueCategories = useMemo(() => {
-    if (!jokes) return [];
+    if (!jokes) return []; // jokes can be null
     const categories = new Set(jokes.map(joke => joke.category));
     return Array.from(categories).sort();
   }, [jokes]);
 
   const filteredJokes = useMemo(() => {
-    if (!jokes) return [];
+    if (!jokes) return []; // jokes can be null
     return jokes.filter(joke => {
       const categoryMatch = selectedCategory === 'all' || joke.category === selectedCategory;
       const usageMatch = (showUsed && joke.used) || (showUnused && !joke.used);
-      // If both showUsed and showUnused are false, we should not filter by usage (show all)
-      // Or, more accurately, if neither is true, nothing matches. If at least one is true, then usageMatch must be true.
       const usageFilterActive = showUsed || showUnused; 
       const funnyRateMatch = filterFunnyRate === -1 || joke.funnyRate === filterFunnyRate;
 
@@ -35,13 +39,43 @@ export default function Home() {
     });
   }, [jokes, selectedCategory, showUsed, showUnused, filterFunnyRate]);
 
+  if (authLoading) {
+    return (
+      <div className="container mx-auto p-4 md:p-8 flex flex-col justify-center items-center min-h-[calc(100vh-8rem)]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="mt-2 text-muted-foreground">Loading authentication...</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="container mx-auto p-4 md:p-8 text-center flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
+        <Laugh className="h-16 w-16 text-primary mb-4" />
+        <h1 className="text-3xl font-bold mb-2">Welcome to Joke Hub!</h1>
+        <p className="text-muted-foreground mb-6 text-lg max-w-md">
+          Please log in or sign up to view, add, and manage your personal collection of jokes.
+        </p>
+        <Button asChild size="lg">
+          <Link href="/auth">Get Started</Link>
+        </Button>
+      </div>
+    );
+  }
+  
+  // User is logged in, but jokes might still be loading from JokeContext
   if (jokes === null) {
-    return <div className="container mx-auto p-4 md:p-8">Loading jokes from the cosmic cloud...</div>;
+    return (
+      <div className="container mx-auto p-4 md:p-8 flex flex-col justify-center items-center min-h-[calc(100vh-8rem)]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="mt-2 text-muted-foreground">Loading your jokes from the cosmic cloud...</p>
+      </div>
+    );
   }
 
   return (
     <div className="container mx-auto p-4 md:p-8">
-      <Header title="Joke Hub" />
+      <Header title="Your Personal Joke Hub" />
 
       <div className="mb-8">
         <JokeFilters
