@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { FC } from 'react';
@@ -7,12 +8,12 @@ import JokeListItem from './joke-list-item';
 
 interface JokeListProps {
   jokes: Joke[];
-  onToggleUsed: (id: string) => void;
+  // onToggleUsed is no longer needed here
 }
 
-const JokeList: FC<JokeListProps> = ({ jokes, onToggleUsed }) => {
+const JokeList: FC<JokeListProps> = ({ jokes }) => {
   if (jokes.length === 0) {
-    return <p className="text-muted-foreground">No jokes found. Add some!</p>;
+    return <p className="text-muted-foreground">No jokes found. Add some or try different filters!</p>;
   }
 
   return (
@@ -29,7 +30,7 @@ const JokeList: FC<JokeListProps> = ({ jokes, onToggleUsed }) => {
       </TableHeader>
       <TableBody>
         {jokes.map((joke) => (
-          <JokeListItem key={joke.id} joke={joke} onToggleUsed={onToggleUsed} />
+          <JokeListItem key={joke.id} joke={joke} />
         ))}
       </TableBody>
     </Table>

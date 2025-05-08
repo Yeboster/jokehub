@@ -1,98 +1,171 @@
+
 "use client";
 
 import type { Joke } from '@/lib/types';
 import type React from 'react';
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-
-// Function to generate a simple unique ID
-const generateId = (): string => `joke_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+import {
+  collection,
+  addDoc,
+  doc,
+  updateDoc,
+  onSnapshot,
+  query,
+  orderBy,
+  Timestamp,
+  writeBatch,
+  deleteDoc, // Added for completeness, though not explicitly used in UI yet
+} from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { useToast } from '@/hooks/use-toast';
 
 interface JokeContextProps {
   jokes: Joke[] | null; // null indicates loading state
-  addJoke: (newJokeData: { text: string; category: string; funnyRate?: number }) => void;
-  importJokes: (importedJokesData: Omit<Joke, 'id' | 'used' | 'dateAdded'>[]) => void;
-  toggleUsed: (id: string) => void;
-  rateJoke: (id: string, rating: number) => void;
+  addJoke: (newJokeData: { text: string; category: string; funnyRate?: number }) => Promise<void>;
+  importJokes: (importedJokesData: Omit<Joke, 'id' | 'used' | 'dateAdded'>[]) => Promise<void>;
+  toggleUsed: (id: string, currentUsedStatus: boolean) => Promise<void>;
+  rateJoke: (id: string, rating: number) => Promise<void>;
+  // deleteJoke: (id: string) => Promise<void>; // Example for future use
 }
 
 const JokeContext = createContext<JokeContextProps | undefined>(undefined);
 
+const JOKES_COLLECTION = 'jokes';
+
 export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [jokes, setJokes] = useState<Joke[] | null>(null); // Initialize with null for loading state
-  const [isClient, setIsClient] = useState(false);
+  const [jokes, setJokes] = useState<Joke[] | null>(null);
+  const { toast } = useToast();
 
-  // Effect to load jokes from localStorage on mount (client-side only)
   useEffect(() => {
-    setIsClient(true);
-    if (typeof window !== 'undefined') {
-      const storedJokes = localStorage.getItem('jokes');
-      let initialJokes: Joke[] = [];
-      if (storedJokes) {
-        try {
-          // Need to parse date strings back into Date objects and handle funnyRate
-          initialJokes = JSON.parse(storedJokes).map((joke: any) => ({
-            ...joke,
-            dateAdded: new Date(joke.dateAdded),
-            funnyRate: joke.funnyRate !== undefined ? joke.funnyRate : 0, // Default if missing
-          }));
-        } catch (e) {
-          console.error("Failed to parse jokes from localStorage", e);
-          localStorage.removeItem('jokes'); // Clear invalid data
-        }
+    const q = query(collection(db, JOKES_COLLECTION), orderBy('dateAdded', 'desc'));
+
+    const unsubscribe = onSnapshot(
+      q,
+      (querySnapshot) => {
+        const jokesData: Joke[] = [];
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          jokesData.push({
+            id: doc.id,
+            text: data.text,
+            category: data.category,
+            dateAdded: (data.dateAdded as Timestamp).toDate(),
+            used: data.used,
+            funnyRate: data.funnyRate !== undefined ? data.funnyRate : 0,
+          });
+        });
+        setJokes(jokesData);
+      },
+      (error) => {
+        console.error('Error fetching jokes from Firestore:', error);
+        toast({
+          title: 'Error',
+          description: 'Could not load jokes. Please try again later.',
+          variant: 'destructive',
+        });
+        setJokes([]); // Set to empty array on error to stop loading state
       }
-      setJokes(initialJokes); // Set initial jokes (or empty array if none/error)
-    }
-  }, []);
-
-  // Effect to save jokes to localStorage whenever they change (client-side only)
-  useEffect(() => {
-    if (isClient && jokes !== null) { // Only save if client and not in initial loading state
-      localStorage.setItem('jokes', JSON.stringify(jokes));
-    }
-  }, [jokes, isClient]);
-
-  const addJoke = useCallback((newJokeData: { text: string; category: string; funnyRate?: number }) => {
-    const newJoke: Joke = {
-      id: generateId(),
-      text: newJokeData.text,
-      category: newJokeData.category,
-      funnyRate: newJokeData.funnyRate !== undefined ? newJokeData.funnyRate : 0,
-      dateAdded: new Date(),
-      used: false,
-    };
-    setJokes((prevJokes) => (prevJokes ? [newJoke, ...prevJokes] : [newJoke]));
-  }, []);
-
-  const importJokes = useCallback((importedJokesData: Omit<Joke, 'id' | 'used' | 'dateAdded'>[]) => {
-    const newJokes: Joke[] = importedJokesData.map(jokeData => ({
-      id: generateId(),
-      ...jokeData,
-      funnyRate: jokeData.funnyRate !== undefined ? jokeData.funnyRate : 0,
-      dateAdded: new Date(),
-      used: false,
-    }));
-    setJokes(prevJokes => (prevJokes ? [...newJokes, ...prevJokes] : newJokes));
-  }, []);
-
-  const toggleUsed = useCallback((id: string) => {
-    setJokes(prevJokes =>
-      prevJokes
-        ? prevJokes.map(joke =>
-            joke.id === id ? { ...joke, used: !joke.used } : joke
-          )
-        : []
     );
-  }, []);
 
-  const rateJoke = useCallback((id: string, rating: number) => {
-    setJokes(prevJokes =>
-      prevJokes
-        ? prevJokes.map(joke =>
-            joke.id === id ? { ...joke, funnyRate: rating } : joke
-          )
-        : []
-    );
-  }, []);
+    return () => unsubscribe(); // Cleanup subscription on unmount
+  }, [toast]);
+
+  const addJoke = useCallback(
+    async (newJokeData: { text: string; category: string; funnyRate?: number }) => {
+      try {
+        await addDoc(collection(db, JOKES_COLLECTION), {
+          text: newJokeData.text,
+          category: newJokeData.category,
+          funnyRate: newJokeData.funnyRate !== undefined ? newJokeData.funnyRate : 0,
+          dateAdded: Timestamp.now(),
+          used: false,
+        });
+        toast({
+          title: 'Success',
+          description: 'Joke added successfully!',
+        });
+      } catch (error) {
+        console.error('Error adding joke to Firestore:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to add joke.',
+          variant: 'destructive',
+        });
+      }
+    },
+    [toast]
+  );
+
+  const importJokes = useCallback(
+    async (importedJokesData: Omit<Joke, 'id' | 'used' | 'dateAdded'>[]) => {
+      const batch = writeBatch(db);
+      importedJokesData.forEach((jokeData) => {
+        const docRef = doc(collection(db, JOKES_COLLECTION));
+        batch.set(docRef, {
+          ...jokeData,
+          funnyRate: jokeData.funnyRate !== undefined ? jokeData.funnyRate : 0,
+          dateAdded: Timestamp.now(),
+          used: false,
+        });
+      });
+
+      try {
+        await batch.commit();
+        toast({
+          title: 'Import Successful',
+          description: `Imported ${importedJokesData.length} jokes.`,
+        });
+      } catch (error) {
+        console.error('Error importing jokes to Firestore:', error);
+        toast({
+          title: 'Import Error',
+          description: 'Failed to import jokes.',
+          variant: 'destructive',
+        });
+      }
+    },
+    [toast]
+  );
+
+  const toggleUsed = useCallback(
+    async (id: string, currentUsedStatus: boolean) => {
+      const jokeDocRef = doc(db, JOKES_COLLECTION, id);
+      try {
+        await updateDoc(jokeDocRef, {
+          used: !currentUsedStatus,
+        });
+        // Toast can be added here if desired, but onSnapshot will update UI
+      } catch (error) {
+        console.error('Error toggling joke status in Firestore:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to update joke status.',
+          variant: 'destructive',
+        });
+      }
+    },
+    [toast]
+  );
+
+  const rateJoke = useCallback(
+    async (id: string, rating: number) => {
+      const jokeDocRef = doc(db, JOKES_COLLECTION, id);
+      try {
+        await updateDoc(jokeDocRef, {
+          funnyRate: rating,
+        });
+        // Toast can be added here
+      } catch (error) {
+        console.error('Error rating joke in Firestore:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to rate joke.',
+          variant: 'destructive',
+        });
+      }
+    },
+    [toast]
+  );
 
   const value = {
     jokes,

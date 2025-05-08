@@ -1,8 +1,10 @@
+
 "use client";
 
 import type { FC } from 'react';
 import { format } from 'date-fns';
-import { Check, Square } from 'lucide-react';
+import { Check, Square, Loader2 } from 'lucide-react';
+import { useState } from 'react';
 
 import type { Joke } from '@/lib/types';
 import { TableCell, TableRow } from '@/components/ui/table';
@@ -14,14 +16,25 @@ import { useJokes } from '@/contexts/JokeContext';
 
 interface JokeListItemProps {
   joke: Joke;
-  onToggleUsed: (id: string) => void;
+  // onToggleUsed is removed as context now handles it directly via ID and current status
 }
 
-const JokeListItem: FC<JokeListItemProps> = ({ joke, onToggleUsed }) => {
-  const { rateJoke } = useJokes();
+const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
+  const { rateJoke, toggleUsed } = useJokes();
+  const [isTogglingUsed, setIsTogglingUsed] = useState(false);
+  const [isRating, setIsRating] = useState(false);
 
-  const handleRatingChange = (newRating: number) => {
-    rateJoke(joke.id, newRating);
+  const handleRatingChange = async (newRating: number) => {
+    if (joke.funnyRate === newRating) return; // Avoid unnecessary updates
+    setIsRating(true);
+    await rateJoke(joke.id, newRating);
+    setIsRating(false);
+  };
+
+  const handleToggleUsed = async () => {
+    setIsTogglingUsed(true);
+    await toggleUsed(joke.id, joke.used);
+    setIsTogglingUsed(false);
   };
 
   return (
@@ -31,7 +44,13 @@ const JokeListItem: FC<JokeListItemProps> = ({ joke, onToggleUsed }) => {
         <Badge variant="secondary">{joke.category}</Badge>
       </TableCell>
       <TableCell>
-        <StarRating rating={joke.funnyRate} onRatingChange={handleRatingChange} size={18} />
+        <StarRating 
+          rating={joke.funnyRate} 
+          onRatingChange={handleRatingChange} 
+          size={18} 
+          disabled={isRating} 
+        />
+         {isRating && <Loader2 className="ml-2 h-4 w-4 animate-spin inline-flex" />}
       </TableCell>
       <TableCell>{format(joke.dateAdded, 'PP')}</TableCell>
       <TableCell className="text-center">
@@ -41,10 +60,17 @@ const JokeListItem: FC<JokeListItemProps> = ({ joke, onToggleUsed }) => {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => onToggleUsed(joke.id)}
+                onClick={handleToggleUsed}
+                disabled={isTogglingUsed}
                 aria-label={joke.used ? 'Mark as unused' : 'Mark as used'}
               >
-                {joke.used ? <Check className="text-green-600" /> : <Square />}
+                {isTogglingUsed ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : joke.used ? (
+                  <Check className="text-green-600" />
+                ) : (
+                  <Square />
+                )}
               </Button>
             </TooltipTrigger>
             <TooltipContent>
