@@ -15,7 +15,9 @@
     "utils": "@/lib/utils",
     "ui": "@/components/ui",
     "lib": "@/lib",
-    "hooks": "@/hooks"
+    "hooks": "@/hooks",
+    "Command": "@/components/ui/command",
+    "Popover": "@/components/ui/popover"
   },
   "iconLibrary": "lucide"
 }

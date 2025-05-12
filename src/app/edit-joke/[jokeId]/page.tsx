@@ -1,24 +1,34 @@
 
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Loader2, Save, ArrowLeft, ShieldAlert } from 'lucide-react';
+import { Loader2, Save, ArrowLeft, ShieldAlert, Check, ChevronsUpDown } from 'lucide-react';
 
 import type { Joke } from '@/lib/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { useJokes } from '@/contexts/JokeContext';
 import Header from '@/components/header';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+// import { Input } from '@/components/ui/input'; // Replaced with Combobox-related components
 import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import { cn } from '@/lib/utils';
 
 const editJokeFormSchema = z.object({
   text: z.string().min(1, 'Joke text cannot be empty.'),
@@ -40,6 +50,8 @@ export default function EditJokePage() {
   const [loadingJokeData, setLoadingJokeData] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [isCategoryPopoverOpen, setCategoryPopoverOpen] = useState(false);
+  const [categorySearch, setCategorySearch] = useState('');
 
   const jokeId = Array.isArray(params.jokeId) ? params.jokeId[0] : params.jokeId;
 
@@ -70,6 +82,7 @@ export default function EditJokePage() {
             category: fetchedJoke.category,
             funnyRate: fetchedJoke.funnyRate,
           });
+           setCategorySearch(fetchedJoke.category); // Initialize search with current category
         } else {
            setFetchError('Joke not found or you do not have permission to edit it.');
            toast({ title: 'Error', description: 'Joke not found or permission denied.', variant: 'destructive' });
@@ -119,7 +132,30 @@ export default function EditJokePage() {
 
   // Disable form if loading auth, joke data, categories, submitting, not logged in, or error occurred
   const isFormDisabled = authLoading || loadingJokeData || loadingCategories || isSubmitting || !user || !!fetchError;
-  const categoryNames = Array.isArray(categories) ? categories.map(cat => cat.name) : [];
+  const categoryNames = useMemo(() => Array.isArray(categories) ? categories.map(cat => cat.name).sort() : [], [categories]);
+
+   // Filtered options for Combobox, including the "Add new" option
+   const categoryOptions = useMemo(() => {
+    let filtered = categoryNames;
+    if (categorySearch) {
+        filtered = categoryNames.filter(name =>
+            name.toLowerCase().includes(categorySearch.toLowerCase())
+        );
+    }
+
+    const options = filtered.map(name => ({ value: name, label: name }));
+
+    // Add "Create" option if the search term doesn't exactly match an existing category (case-insensitive)
+    const searchTermTrimmed = categorySearch.trim();
+    const exactMatchFound = categoryNames.some(name => name.toLowerCase() === searchTermTrimmed.toLowerCase());
+
+    if (searchTermTrimmed && !exactMatchFound) {
+      options.unshift({ value: searchTermTrimmed, label: `Create "${searchTermTrimmed}"` });
+    }
+
+    return options;
+  }, [categoryNames, categorySearch]);
+
 
   // --- Loading States ---
   if (authLoading) {
@@ -200,29 +236,71 @@ export default function EditJokePage() {
               <FormField
                 control={form.control}
                 name="category"
-                render={({ field }) => (
-                  <FormItem>
+                 render={({ field }) => (
+                 <FormItem className="flex flex-col">
                     <FormLabel>Category</FormLabel>
-                    <FormControl>
-                       {/* Use Input with datalist for suggestions. User can still type a new category. */}
-                      <Input
-                         placeholder={loadingCategories ? "Loading categories..." : "e.g., Programming (type new or select)"}
-                         {...field}
-                         list="category-suggestions"
-                         disabled={isFormDisabled} // Disable if form should be disabled
-                         autoComplete="off" // Prevent browser's own autocomplete
-                       />
-                    </FormControl>
-                     {/* Datalist provides suggestions based on existing categories */}
-                    <datalist id="category-suggestions">
-                      {categoryNames.map((catName) => (
-                        <option key={catName} value={catName} />
-                      ))}
-                    </datalist>
-                     {/* FormMessage shows validation errors (e.g., "Category cannot be empty") */}
-                    <FormMessage />
+                     <Popover open={isCategoryPopoverOpen} onOpenChange={setCategoryPopoverOpen}>
+                        <PopoverTrigger asChild>
+                         <FormControl>
+                            <Button
+                              variant="outline"
+                              role="combobox"
+                              aria-expanded={isCategoryPopoverOpen}
+                              className={cn("w-full justify-between", !field.value && "text-muted-foreground")}
+                              disabled={isFormDisabled || loadingCategories}
+                            >
+                              {loadingCategories
+                               ? "Loading categories..."
+                               : field.value
+                                 ? categoryNames.find(
+                                     (name) => name.toLowerCase() === field.value.toLowerCase() // Case-insensitive find
+                                   ) || field.value // Show typed value if not exact match
+                                 : "Select or type category..."}
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                          <Command shouldFilter={false}> {/* We do custom filtering */}
+                            <CommandInput
+                                placeholder="Search or create category..."
+                                value={categorySearch}
+                                onValueChange={setCategorySearch}
+                            />
+                             <CommandList>
+                                <CommandEmpty>
+                                    {categorySearch.trim() ? `No category found. Create "${categorySearch.trim()}"?` : 'No categories found.'}
+                                </CommandEmpty>
+                                <CommandGroup>
+                                  {categoryOptions.map((option) => (
+                                    <CommandItem
+                                      key={option.value} // Use value for key
+                                      value={option.label} // Important: value must be unique, use label here for display/selection
+                                      onSelect={() => {
+                                        field.onChange(option.value); // Use the actual value (could be existing or new)
+                                        setCategorySearch(option.value); // Update search to reflect selection
+                                        setCategoryPopoverOpen(false);
+                                      }}
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          field.value?.toLowerCase() === option.value.toLowerCase() // Case-insensitive check
+                                            ? "opacity-100"
+                                            : "opacity-0"
+                                        )}
+                                      />
+                                      {option.label}
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                             </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                     <FormMessage />
                   </FormItem>
-                )}
+              )}
               />
               <FormField
                 control={form.control}
