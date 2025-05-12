@@ -21,11 +21,12 @@ const JokeList: FC<JokeListProps> = ({ jokes }) => {
       <TableCaption>A list of your jokes.</TableCaption>
       <TableHeader>
         <TableRow>
-          <TableHead className="w-[40%]">Joke</TableHead>
+          <TableHead className="w-[35%]">Joke</TableHead>
           <TableHead>Category</TableHead>
           <TableHead>Rating</TableHead>
           <TableHead>Date Added</TableHead>
           <TableHead className="text-center">Used</TableHead>
+          <TableHead className="text-center">Actions</TableHead> {/* Added Actions Header */}
         </TableRow>
       </TableHeader>
       <TableBody>

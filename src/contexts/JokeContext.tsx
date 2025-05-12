@@ -17,6 +17,7 @@ import {
   where,
   limit,
   getDocs,
+  getDoc, // Import getDoc for fetching single document
   startAfter,
   type DocumentSnapshot,
   type QueryDocumentSnapshot,
@@ -28,6 +29,15 @@ import { useAuth } from './AuthContext'; // Import useAuth
 
 const PAGE_SIZE = 10; // Number of jokes to fetch per page
 
+// Define the shape of the data needed for updating a joke
+interface UpdateJokeData {
+    text?: string;
+    category?: string;
+    funnyRate?: number;
+    // used status is handled by toggleUsed
+}
+
+
 interface JokeContextProps {
   jokes: Joke[] | null; // null indicates loading state
   categories: Category[] | null; // null indicates loading state
@@ -38,7 +48,9 @@ interface JokeContextProps {
   importJokes: (importedJokesData: Omit<Joke, 'id' | 'used' | 'dateAdded' | 'userId'>[]) => Promise<void>;
   toggleUsed: (id: string, currentUsedStatus: boolean) => Promise<void>;
   rateJoke: (id: string, rating: number) => Promise<void>;
-  updateJokeCategory: (jokeId: string, newCategoryName: string) => Promise<void>;
+  updateJokeCategory: (jokeId: string, newCategoryName: string) => Promise<void>; // Keep for now, might refactor later
+  getJokeById: (jokeId: string) => Promise<Joke | null>; // New function to fetch a single joke
+  updateJoke: (jokeId: string, updatedData: UpdateJokeData) => Promise<void>; // New function to update joke details
   loadMoreJokes: () => Promise<void>;
 }
 
@@ -122,15 +134,22 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const processedCategories: Category[] = snapshot.docs
         .map(docSnapshot => {
           const data = docSnapshot.data();
-          if (data && typeof data.name === 'string' && data.name.trim() !== '' && typeof data.userId === 'string') {
+          // Ensure name is a non-empty string and userId matches
+          if (data && typeof data.name === 'string' && data.name.trim() !== '' && data.userId === user.uid) {
             return {
               id: docSnapshot.id,
               name: data.name.trim(),
               userId: data.userId,
             };
           }
-          console.warn(`Malformed category document found with id ${docSnapshot.id}, data:`, data);
-          return null; // Filter out malformed categories
+          // Silently ignore categories that don't match the user or are malformed
+          if (data && data.userId !== user.uid) {
+             // This shouldn't happen due to the query 'where' clause, but good to have a check
+             console.warn(`Category document ${docSnapshot.id} fetched but userId does not match current user.`);
+          } else if (data && (typeof data.name !== 'string' || data.name.trim() === '')) {
+             console.warn(`Malformed category document found with id ${docSnapshot.id}, invalid name:`, data.name);
+          }
+          return null;
         })
         .filter((cat): cat is Category => cat !== null); // Type guard to remove nulls
 
@@ -157,23 +176,36 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error("Category name cannot be empty.");
     }
 
+    // Check local state first for potential performance improvement
+    const existingCategory = categories?.find(cat => cat.name.toLowerCase() === categoryName.toLowerCase() && cat.userId === userId);
+    if (existingCategory) {
+        return existingCategory.name; // Return the existing name (with original casing)
+    }
+
+
+    // If not found locally, query Firestore (handles cases where local state might be stale or category was just added)
     const q = query(
       collection(db, CATEGORIES_COLLECTION),
-      where('name', '==', categoryName),
       where('userId', '==', userId),
-      limit(1)
+      where('name', '==', categoryName) // Case-sensitive query; Firestore default
+      // Consider storing a lowercase version for case-insensitive checks if needed,
+      // but for now, we rely on finding the exact match or creating a new one.
     );
 
     try {
       const querySnapshot = await getDocs(q);
-      if (querySnapshot.empty) {
+      if (!querySnapshot.empty) {
+        // Category exists, return its name (maintaining original casing from DB)
+        return querySnapshot.docs[0].data().name;
+      } else {
+         // Category doesn't exist, add it
         await addDoc(collection(db, CATEGORIES_COLLECTION), {
           name: categoryName,
           userId: userId,
         });
-        // onSnapshot listener updates local state
+        // The onSnapshot listener for categories should pick this up and update the local state.
+        return categoryName; // Return the newly added category name
       }
-      return categoryName;
     } catch (error) {
       console.error(`Error ensuring category "${categoryName}" exists:`, error);
       toast({
@@ -181,7 +213,7 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: `Could not verify or add category "${categoryName}".`,
         variant: 'destructive',
       });
-      throw error;
+      throw error; // Propagate error
     }
   };
 
@@ -220,7 +252,7 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
     },
-    [toast, user]
+    [toast, user, categories] // Added categories dependency for local check in _ensureCategoryExistsAndAdd
   );
 
   const importJokes = useCallback(
@@ -281,7 +313,7 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
     },
-    [toast, user] // resetPagination dependency removed as it's called internally
+    [toast, user, categories] // Added categories dependency
   );
 
   const toggleUsed = useCallback(
@@ -292,11 +324,16 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       const jokeDocRef = doc(db, JOKES_COLLECTION, id);
       try {
+         // Check ownership before updating (optional but good practice)
+         const docSnap = await getDoc(jokeDocRef);
+         if (!docSnap.exists() || docSnap.data()?.userId !== user.uid) {
+             throw new Error("Joke not found or permission denied.");
+         }
         await updateDoc(jokeDocRef, { used: !currentUsedStatus });
-        // Real-time listener updates the state
-      } catch (error) {
+        // Real-time listener updates the state in the list view
+      } catch (error: any) {
         console.error('Error toggling joke status:', error);
-        toast({ title: 'Error', description: 'Failed to update joke status.', variant: 'destructive' });
+        toast({ title: 'Error', description: error.message || 'Failed to update joke status.', variant: 'destructive' });
       }
     },
     [toast, user]
@@ -310,16 +347,22 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       const jokeDocRef = doc(db, JOKES_COLLECTION, id);
       try {
+         // Check ownership before updating
+         const docSnap = await getDoc(jokeDocRef);
+         if (!docSnap.exists() || docSnap.data()?.userId !== user.uid) {
+             throw new Error("Joke not found or permission denied.");
+         }
         await updateDoc(jokeDocRef, { funnyRate: rating });
         // Real-time listener updates the state
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error rating joke:', error);
-        toast({ title: 'Error', description: 'Failed to rate joke.', variant: 'destructive' });
+        toast({ title: 'Error', description: error.message || 'Failed to rate joke.', variant: 'destructive' });
       }
     },
     [toast, user]
   );
 
+  // Kept for potential direct category updates, but `updateJoke` is more general
   const updateJokeCategory = useCallback(
     async (jokeId: string, newRawCategoryName: string) => {
       if (!user) {
@@ -328,6 +371,12 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       const jokeDocRef = doc(db, JOKES_COLLECTION, jokeId);
       try {
+        // Check ownership before updating
+         const docSnap = await getDoc(jokeDocRef);
+         if (!docSnap.exists() || docSnap.data()?.userId !== user.uid) {
+             throw new Error("Joke not found or permission denied.");
+         }
+
         const finalCategoryName = await _ensureCategoryExistsAndAdd(newRawCategoryName, user.uid);
         await updateDoc(jokeDocRef, { category: finalCategoryName });
         // Real-time listener updates the state
@@ -335,19 +384,105 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
           title: 'Category Updated',
           description: 'Joke category changed successfully.',
         });
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error updating joke category:', error);
         if (!(error instanceof Error && error.message.includes("Category"))) {
             toast({
               title: 'Error Updating Category',
-              description: 'Failed to update joke category.',
+              description: error.message || 'Failed to update joke category.',
               variant: 'destructive',
             });
         }
+        throw error; // Re-throw for the caller if needed
       }
     },
-    [toast, user]
+    [toast, user, categories] // Added categories dependency
   );
+
+
+  // New function to fetch a single joke by ID
+  const getJokeById = useCallback(async (jokeId: string): Promise<Joke | null> => {
+     if (!user) {
+        // console.log("getJokeById: No user logged in.");
+        return null;
+     }
+     const jokeDocRef = doc(db, JOKES_COLLECTION, jokeId);
+     try {
+        const docSnap = await getDoc(jokeDocRef);
+        if (docSnap.exists() && docSnap.data()?.userId === user.uid) {
+            const data = docSnap.data();
+            return {
+                id: docSnap.id,
+                text: data.text,
+                category: data.category,
+                funnyRate: data.funnyRate,
+                dateAdded: (data.dateAdded as Timestamp).toDate(),
+                used: data.used,
+                userId: data.userId,
+            } as Joke;
+        } else {
+            // console.log(`getJokeById: Joke ${jokeId} not found or user mismatch.`);
+            return null; // Not found or not owned by user
+        }
+     } catch (error) {
+        console.error(`Error fetching joke ${jokeId}:`, error);
+        toast({ title: 'Error', description: 'Could not fetch joke details.', variant: 'destructive'});
+        return null;
+     }
+  }, [user, toast]); // Added user and toast dependencies
+
+
+   // New function to update joke details (text, category, funnyRate)
+   const updateJoke = useCallback(async (jokeId: string, updatedData: UpdateJokeData) => {
+      if (!user) {
+        toast({ title: 'Authentication Required', description: 'Please log in to update a joke.', variant: 'destructive' });
+        return;
+      }
+
+      const jokeDocRef = doc(db, JOKES_COLLECTION, jokeId);
+      const dataToUpdate: Record<string, any> = {};
+      let finalCategoryName = updatedData.category; // Use provided category initially
+
+      try {
+          // Check ownership before updating
+         const docSnap = await getDoc(jokeDocRef);
+         if (!docSnap.exists() || docSnap.data()?.userId !== user.uid) {
+             throw new Error("Joke not found or permission denied.");
+         }
+
+         // Prepare update data, ensuring category exists if provided
+         if (updatedData.category) {
+            finalCategoryName = await _ensureCategoryExistsAndAdd(updatedData.category, user.uid);
+            dataToUpdate.category = finalCategoryName;
+         }
+         if (updatedData.text !== undefined) { // Check for undefined to allow empty string
+             dataToUpdate.text = updatedData.text;
+         }
+         if (updatedData.funnyRate !== undefined) {
+             dataToUpdate.funnyRate = updatedData.funnyRate;
+         }
+
+         if (Object.keys(dataToUpdate).length === 0) {
+             toast({ title: 'No Changes', description: 'No changes were detected.', variant: 'default' });
+             return; // Nothing to update
+         }
+
+         await updateDoc(jokeDocRef, dataToUpdate);
+         toast({ title: 'Success', description: 'Joke updated successfully!' });
+          // The real-time listener on the main page will reflect changes.
+          // If the updated joke's sort order changes (e.g., dateAdded), pagination might need reset,
+          // but typically updates don't change the order based on 'dateAdded desc'.
+
+      } catch (error: any) {
+          console.error(`Error updating joke ${jokeId}:`, error);
+           if (!(error instanceof Error && error.message.includes("Category"))) {
+             toast({ title: 'Error Updating Joke', description: error.message || 'Failed to update joke.', variant: 'destructive' });
+           }
+           throw error; // Re-throw error for the form to handle
+      }
+
+   }, [user, toast, categories]); // Added user, toast, categories
+
 
   const loadMoreJokes = useCallback(async () => {
     if (!user || !hasMoreJokes || loadingMoreJokes || !lastVisibleJokeDocRef.current) {
@@ -397,6 +532,8 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
     toggleUsed,
     rateJoke,
     updateJokeCategory,
+    getJokeById, // Expose new function
+    updateJoke, // Expose new function
     loadMoreJokes,
     hasMoreJokes,
     loadingInitialJokes,
@@ -413,5 +550,3 @@ export const useJokes = (): JokeContextProps => {
   }
   return context;
 };
-
-    
