@@ -22,7 +22,8 @@ import { useToast } from '@/hooks/use-toast';
 
 const editJokeFormSchema = z.object({
   text: z.string().min(1, 'Joke text cannot be empty.'),
-  category: z.string().min(1, 'Category cannot be empty. Type a new one or select from suggestions.').trim(),
+  // Ensure category is trimmed and validated
+  category: z.string().trim().min(1, 'Category cannot be empty. Type a new one or select from suggestions.'),
   funnyRate: z.coerce.number().min(0).max(5).optional().default(0),
 });
 
@@ -33,7 +34,8 @@ export default function EditJokePage() {
   const router = useRouter();
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
-  const { getJokeById, updateJoke, categories, loadingInitialJokes: loadingCategories } = useJokes(); // Use getJokeById and updateJoke
+  // Use getJokeById, updateJoke, and get categories/loading state from JokeContext
+  const { getJokeById, updateJoke, categories, loadingInitialJokes: loadingCategories } = useJokes();
   const [joke, setJoke] = useState<Joke | null>(null);
   const [loadingJokeData, setLoadingJokeData] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -71,8 +73,6 @@ export default function EditJokePage() {
         } else {
            setFetchError('Joke not found or you do not have permission to edit it.');
            toast({ title: 'Error', description: 'Joke not found or permission denied.', variant: 'destructive' });
-           // Optionally redirect after a delay or let the user click back
-           // setTimeout(() => router.push('/'), 3000);
         }
       } catch (error) {
         console.error('Error fetching joke for editing:', error);
@@ -85,34 +85,30 @@ export default function EditJokePage() {
 
     if (!authLoading) { // Only fetch when auth state is resolved
          if (!user) {
-             // Redirect to auth page if not logged in, preserving the return path
              router.push(`/auth?redirect=/edit-joke/${jokeId}`);
          } else {
             fetchJoke();
          }
     }
-  }, [jokeId, user, authLoading, getJokeById, form, router, toast]); // Dependencies
+  }, [jokeId, user, authLoading, getJokeById, form, router, toast]);
 
   const onSubmit: SubmitHandler<EditJokeFormValues> = async (data) => {
-    if (!user || !joke) return; // Should not happen if UI is disabled correctly
+    if (!user || !joke) return;
 
-    // Check if data actually changed
      if (data.text === joke.text && data.category === joke.category && data.funnyRate === joke.funnyRate) {
          toast({ title: 'No Changes', description: 'No changes were made to the joke.' });
-         router.push('/'); // Navigate back home
+         router.push('/');
          return;
      }
 
-
     setIsSubmitting(true);
     try {
-      await updateJoke(joke.id, data);
+      // The category name is already trimmed by the schema validation
+      await updateJoke(joke.id, data); // updateJoke handles category creation via _ensureCategoryExistsAndAdd
       toast({ title: 'Success', description: 'Joke updated successfully!' });
-      router.push('/'); // Navigate back to home page on success
+      router.push('/');
     } catch (error) {
       console.error("Failed to update joke:", error);
-      // Toasting handled within updateJoke context function for specific errors
-      // Generic fallback
        if (!(error instanceof Error && error.message.includes("Category"))) {
            toast({ title: 'Update Error', description: 'Failed to update joke.', variant: 'destructive' });
        }
@@ -121,6 +117,7 @@ export default function EditJokePage() {
     }
   };
 
+  // Disable form if loading auth, joke data, categories, submitting, not logged in, or error occurred
   const isFormDisabled = authLoading || loadingJokeData || loadingCategories || isSubmitting || !user || !!fetchError;
   const categoryNames = Array.isArray(categories) ? categories.map(cat => cat.name) : [];
 
@@ -141,6 +138,7 @@ export default function EditJokePage() {
       </div>
     );
   }
+   // Show loading indicator while categories are loading
    if (loadingCategories) {
      return (
       <div className="container mx-auto p-4 md:p-8 flex justify-center items-center min-h-[calc(100vh-8rem)]">
@@ -206,13 +204,22 @@ export default function EditJokePage() {
                   <FormItem>
                     <FormLabel>Category</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g., Programming, Dad Jokes (type new or select)" {...field} list="category-suggestions" disabled={isFormDisabled}/>
+                       {/* Use Input with datalist for suggestions. User can still type a new category. */}
+                      <Input
+                         placeholder={loadingCategories ? "Loading categories..." : "e.g., Programming (type new or select)"}
+                         {...field}
+                         list="category-suggestions"
+                         disabled={isFormDisabled} // Disable if form should be disabled
+                         autoComplete="off" // Prevent browser's own autocomplete
+                       />
                     </FormControl>
+                     {/* Datalist provides suggestions based on existing categories */}
                     <datalist id="category-suggestions">
                       {categoryNames.map((catName) => (
                         <option key={catName} value={catName} />
                       ))}
                     </datalist>
+                     {/* FormMessage shows validation errors (e.g., "Category cannot be empty") */}
                     <FormMessage />
                   </FormItem>
                 )}

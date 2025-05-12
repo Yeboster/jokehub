@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { FC } from 'react';
@@ -19,7 +20,8 @@ import Link from 'next/link';
 
 const jokeFormSchema = z.object({
   text: z.string().min(1, 'Joke text cannot be empty.'),
-  category: z.string().min(1, 'Category cannot be empty. Type a new one or select from suggestions.').trim(),
+  // Ensure category is trimmed and validated
+  category: z.string().trim().min(1, 'Category cannot be empty. Type a new one or select from suggestions.'),
   funnyRate: z.coerce.number().min(0).max(5).optional().default(0),
 });
 
@@ -27,13 +29,12 @@ type JokeFormValues = z.infer<typeof jokeFormSchema>;
 
 interface AddJokeFormProps {
   onAddJoke: (data: JokeFormValues) => Promise<void>;
-  // categories prop removed, will get from context
 }
 
 const AddJokeForm: FC<AddJokeFormProps> = ({ onAddJoke }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { user } = useAuth();
-  const { categories } = useJokes(); // Get categories from context
+  const { categories, loadingInitialJokes: loadingCategories } = useJokes(); // Get categories and their loading state
 
   const form = useForm<JokeFormValues>({
     resolver: zodResolver(jokeFormSchema),
@@ -51,6 +52,7 @@ const AddJokeForm: FC<AddJokeFormProps> = ({ onAddJoke }) => {
     }
     setIsSubmitting(true);
     try {
+      // The category name is already trimmed by the schema validation
       await onAddJoke(data); // onAddJoke is JokeContext.addJoke, which handles category creation
       form.reset();
     } catch (error) {
@@ -61,7 +63,7 @@ const AddJokeForm: FC<AddJokeFormProps> = ({ onAddJoke }) => {
     }
   };
 
-  const isFormDisabled = !user || isSubmitting;
+  const isFormDisabled = !user || isSubmitting || loadingCategories; // Disable form if categories are loading
   const categoryNames = Array.isArray(categories) ? categories.map(cat => cat.name) : [];
 
   return (
@@ -100,13 +102,22 @@ const AddJokeForm: FC<AddJokeFormProps> = ({ onAddJoke }) => {
                 <FormItem>
                   <FormLabel>Category</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., Programming, Dad Jokes (type new or select)" {...field} list="category-suggestions" disabled={isFormDisabled || categories === null}/>
+                     {/* Use Input with datalist for suggestions. User can still type a new category. */}
+                    <Input
+                      placeholder={loadingCategories ? "Loading categories..." : "e.g., Programming (type new or select)"}
+                      {...field}
+                      list="category-suggestions"
+                      disabled={isFormDisabled} // Disable if not logged in, submitting, or categories loading
+                      autoComplete="off" // Prevent browser's own autocomplete interfering
+                     />
                   </FormControl>
-                   <datalist id="category-suggestions">
+                   {/* Datalist provides suggestions based on existing categories */}
+                  <datalist id="category-suggestions">
                     {categoryNames.map((catName) => (
                       <option key={catName} value={catName} />
                     ))}
                   </datalist>
+                  {/* FormMessage shows validation errors (e.g., "Category cannot be empty") */}
                   <FormMessage />
                 </FormItem>
               )}
@@ -119,7 +130,7 @@ const AddJokeForm: FC<AddJokeFormProps> = ({ onAddJoke }) => {
                   <FormLabel>Funny Rate</FormLabel>
                   <Select
                     onValueChange={(value) => field.onChange(parseInt(value, 10))}
-                    defaultValue={field.value?.toString() || "0"}
+                    value={field.value?.toString() ?? "0"} // Ensure value is string for Select
                     disabled={isFormDisabled}
                   >
                     <FormControl>
