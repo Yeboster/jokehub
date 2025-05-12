@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect } from 'react';
@@ -9,41 +10,47 @@ import JokeList from '@/components/joke-list';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Loader2, Laugh } from 'lucide-react';
+import { Loader2, Laugh, ChevronDown } from 'lucide-react';
 
 export default function Home() {
   const { user, loading: authLoading } = useAuth();
-  // jokes and categories can be null if loading from JokeContext
-  const { jokes, categories } = useJokes(); 
-  
+  const {
+    jokes,
+    categories,
+    loadMoreJokes,
+    hasMoreJokes,
+    loadingInitialJokes,
+    loadingMoreJokes
+   } = useJokes();
+
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [showUsed, setShowUsed] = useState<boolean>(true);
   const [showUnused, setShowUnused] = useState<boolean>(true);
   const [filterFunnyRate, setFilterFunnyRate] = useState<number>(-1);
 
-  // uniqueCategories memo removed, JokeFilters gets categories from context
-
   const filteredJokes = useMemo(() => {
-    if (!jokes) return []; 
+    if (!jokes) return [];
     return jokes.filter(joke => {
       const categoryMatch = selectedCategory === 'all' || joke.category === selectedCategory;
       const usageMatch = (showUsed && joke.used) || (showUnused && !joke.used);
-      const usageFilterActive = showUsed || showUnused; 
+      const usageFilterActive = showUsed || showUnused;
       const funnyRateMatch = filterFunnyRate === -1 || joke.funnyRate === filterFunnyRate;
 
       return categoryMatch && (usageFilterActive ? usageMatch : true) && funnyRateMatch;
     });
   }, [jokes, selectedCategory, showUsed, showUnused, filterFunnyRate]);
 
-  if (authLoading) {
+  // Handle overall loading state (Auth + Initial Jokes)
+  if (authLoading || (!user && !authLoading)) {
     return (
       <div className="container mx-auto p-4 md:p-8 flex flex-col justify-center items-center min-h-[calc(100vh-8rem)]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="mt-2 text-muted-foreground">Loading authentication...</p>
+        <p className="mt-2 text-muted-foreground">Checking authentication...</p>
       </div>
     );
   }
 
+  // Handle logged out state
   if (!user) {
     return (
       <div className="container mx-auto p-4 md:p-8 text-center flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
@@ -58,23 +65,23 @@ export default function Home() {
       </div>
     );
   }
-  
-  // User is logged in, but jokes or categories might still be loading
-  if (jokes === null || categories === null) {
+
+  // Handle initial data loading for logged-in user
+  if (loadingInitialJokes || categories === null || jokes === null) {
     return (
       <div className="container mx-auto p-4 md:p-8 flex flex-col justify-center items-center min-h-[calc(100vh-8rem)]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="mt-2 text-muted-foreground">Loading your data from the cosmic cloud...</p>
+        <p className="mt-2 text-muted-foreground">Loading your jokes...</p>
       </div>
     );
   }
 
+  // Main content when logged in and data is loaded
   return (
     <div className="container mx-auto p-4 md:p-8">
       <Header title="Your Personal Joke Hub" />
 
       <div className="mb-8">
-        {/* JokeFilters no longer needs categories prop, it gets them from context */}
         <JokeFilters
           selectedCategory={selectedCategory}
           onCategoryChange={setSelectedCategory}
@@ -92,6 +99,28 @@ export default function Home() {
       <h2 className="text-2xl font-semibold mb-4 text-primary">Your Jokes</h2>
       <JokeList jokes={filteredJokes} />
 
+      {/* Load More Button */}
+      <div className="mt-8 text-center">
+        {hasMoreJokes ? (
+          <Button
+            onClick={loadMoreJokes}
+            disabled={loadingMoreJokes}
+            variant="outline"
+            size="lg"
+          >
+            {loadingMoreJokes ? (
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+            ) : (
+              <ChevronDown className="mr-2 h-5 w-5" />
+            )}
+            {loadingMoreJokes ? 'Loading...' : 'Load More Jokes'}
+          </Button>
+        ) : (
+          jokes.length > 0 && <p className="text-muted-foreground">No more jokes to load.</p>
+        )}
+      </div>
     </div>
   );
 }
+
+    
