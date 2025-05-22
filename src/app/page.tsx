@@ -8,11 +8,12 @@ import Header from '@/components/header';
 import JokeList from '@/components/joke-list';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Loader2, Laugh, ChevronDown, ListFilter, RotateCcw } from 'lucide-react';
+import { Loader2, Laugh, ChevronDown, RotateCcw, Filter as FilterIcon } from 'lucide-react'; // Added FilterIcon
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
 
 export default function Home() {
   const { user, loading: authLoading } = useAuth();
@@ -26,8 +27,15 @@ export default function Home() {
    } = useJokes();
 
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [showOnlyUsed, setShowOnlyUsed] = useState<boolean>(false); // Changed from showUsed/showUnused, default false
+  const [showOnlyUsed, setShowOnlyUsed] = useState<boolean>(false);
   const [filterFunnyRate, setFilterFunnyRate] = useState<number>(-1);
+
+  // State for filter modal
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  // Temporary states for modal selections
+  const [tempSelectedCategory, setTempSelectedCategory] = useState<string>(selectedCategory);
+  const [tempFilterFunnyRate, setTempFilterFunnyRate] = useState<number>(filterFunnyRate);
+  const [tempShowOnlyUsed, setTempShowOnlyUsed] = useState<boolean>(showOnlyUsed);
 
   const categoryNames = useMemo(() => {
     if (!categories) return [];
@@ -38,19 +46,41 @@ export default function Home() {
     if (!jokes) return [];
     return jokes.filter(joke => {
       const categoryMatch = selectedCategory === 'all' || joke.category === selectedCategory;
-      // If showOnlyUsed is true, only show jokes where joke.used is true.
-      // If showOnlyUsed is false, show all jokes (usageMatch is true).
       const usageMatch = showOnlyUsed ? joke.used === true : true;
       const funnyRateMatch = filterFunnyRate === -1 || joke.funnyRate === filterFunnyRate;
-
       return categoryMatch && usageMatch && funnyRateMatch;
     });
-  }, [jokes, selectedCategory, showOnlyUsed, filterFunnyRate]); // Updated dependencies
+  }, [jokes, selectedCategory, showOnlyUsed, filterFunnyRate]);
+
+  const handleOpenFilterModal = () => {
+    // Initialize temporary states with current active filters
+    setTempSelectedCategory(selectedCategory);
+    setTempFilterFunnyRate(filterFunnyRate);
+    setTempShowOnlyUsed(showOnlyUsed);
+    setIsFilterModalOpen(true);
+  };
+
+  const handleApplyFilters = () => {
+    setSelectedCategory(tempSelectedCategory);
+    setFilterFunnyRate(tempFilterFunnyRate);
+    setShowOnlyUsed(tempShowOnlyUsed);
+    setIsFilterModalOpen(false);
+  };
 
   const handleClearFilters = () => {
     setSelectedCategory('all');
     setFilterFunnyRate(-1);
-    setShowOnlyUsed(false); // Reset to default (show all)
+    setShowOnlyUsed(false);
+    // Also reset temp states to reflect clearing
+    setTempSelectedCategory('all');
+    setTempFilterFunnyRate(-1);
+    setTempShowOnlyUsed(false);
+  };
+  
+  const getFunnyRateLabel = (rate: number): string => {
+    if (rate === 0) return "Unrated";
+    if (rate === -1) return "Any Rating"; // Should not be displayed as a chip if -1
+    return `${rate} Star${rate > 1 ? 's' : ''}`;
   };
 
   // Handle overall loading state (Auth + Initial Jokes)
@@ -94,74 +124,115 @@ export default function Home() {
     <div className="container mx-auto p-4 md:p-8">
       <Header title="Your Personal Joke Hub" />
 
-      {/* New Filter Bar */}
-      <div className="mb-6 p-4 border-b flex flex-wrap items-end gap-x-6 gap-y-4">
-        <div className="flex items-center text-lg font-semibold text-primary mr-2 shrink-0">
-          <ListFilter className="mr-2 h-5 w-5" />
-          Filters
-        </div>
+      {/* New Filter Bar with Modal Trigger and Chips */}
+      <div className="mb-6 p-4 border-b flex flex-wrap items-center gap-x-4 gap-y-2">
+        <Dialog open={isFilterModalOpen} onOpenChange={(isOpen) => {
+          if (!isOpen) { 
+            // When closing dialog without applying (e.g. Esc, X button),
+            // reset temp states to match current active filters.
+            setTempSelectedCategory(selectedCategory);
+            setTempFilterFunnyRate(filterFunnyRate);
+            setTempShowOnlyUsed(showOnlyUsed);
+          }
+          setIsFilterModalOpen(isOpen);
+        }}>
+          <DialogTrigger asChild>
+            <Button variant="outline" onClick={handleOpenFilterModal}>
+              <FilterIcon className="mr-2 h-4 w-4" />
+              Filters
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Customize Filters</DialogTitle>
+              <DialogDescription>
+                Select your filter preferences below. Click apply to see the changes.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              {/* Category Filter */}
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="modal-category-filter" className="text-right">Category</Label>
+                <Select
+                  value={tempSelectedCategory}
+                  onValueChange={setTempSelectedCategory}
+                  disabled={categories === null || categories.length === 0}
+                >
+                  <SelectTrigger id="modal-category-filter" className="col-span-3">
+                    <SelectValue placeholder={categories === null ? "Loading..." : "Select category"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {categoryNames.map((categoryName) => (
+                      <SelectItem key={categoryName} value={categoryName}>
+                        {categoryName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-        {/* Category Filter */}
-        <div className="space-y-1.5 min-w-[150px] flex-grow sm:flex-grow-0">
-          <Label htmlFor="category-filter">Category</Label>
-          <Select
-            value={selectedCategory}
-            onValueChange={setSelectedCategory}
-            disabled={categories === null || categories.length === 0}
-          >
-            <SelectTrigger id="category-filter">
-              <SelectValue placeholder={categories === null ? "Loading..." : "Select category"} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
-              {categoryNames.map((categoryName) => (
-                <SelectItem key={categoryName} value={categoryName}>
-                  {categoryName}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+              {/* Funny Rate Filter */}
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="modal-funny-rate-filter" className="text-right">Rating</Label>
+                <Select
+                  value={tempFilterFunnyRate.toString()}
+                  onValueChange={(value) => setTempFilterFunnyRate(parseInt(value, 10))}
+                >
+                  <SelectTrigger id="modal-funny-rate-filter" className="col-span-3">
+                    <SelectValue placeholder="Select rating" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="-1">Any Rating</SelectItem>
+                    <SelectItem value="0">Unrated</SelectItem>
+                    {[1, 2, 3, 4, 5].map(rate => (
+                      <SelectItem key={rate} value={rate.toString()}>
+                        {rate} Star{rate > 1 ? 's' : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-        {/* Funny Rate Filter */}
-        <div className="space-y-1.5 min-w-[150px] flex-grow sm:flex-grow-0">
-          <Label htmlFor="funny-rate-filter">Rating</Label>
-          <Select
-            value={filterFunnyRate.toString()}
-            onValueChange={(value) => setFilterFunnyRate(parseInt(value, 10))}
-          >
-            <SelectTrigger id="funny-rate-filter">
-              <SelectValue placeholder="Select rating" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="-1">Any Rating</SelectItem>
-              <SelectItem value="0">Unrated</SelectItem>
-              {[1, 2, 3, 4, 5].map(rate => (
-                <SelectItem key={rate} value={rate.toString()}>
-                  {rate} Star{rate > 1 ? 's' : ''}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+              {/* Usage Status Filter */}
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="modal-show-only-used" className="text-right">Usage</Label>
+                <div className="col-span-3 flex items-center space-x-2">
+                  <Switch
+                    id="modal-show-only-used"
+                    checked={tempShowOnlyUsed}
+                    onCheckedChange={setTempShowOnlyUsed}
+                    aria-label="Show only used jokes"
+                  />
+                  <Label htmlFor="modal-show-only-used" className="font-normal">Show Used Only</Label>
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsFilterModalOpen(false)}>Cancel</Button>
+              <Button onClick={handleApplyFilters}>Apply Filters</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
-        {/* Usage Status Filter */}
-        <div className="space-y-1.5 min-w-[100px] flex-grow sm:flex-grow-0"> {/* Adjusted min-width */}
-          <Label>Usage</Label> {/* Changed group label */}
-          <div className="flex items-center space-x-2 pt-1">
-            <Switch
-              id="show-only-used"
-              checked={showOnlyUsed}
-              onCheckedChange={setShowOnlyUsed}
-              aria-label="Show only used jokes"
-            />
-            <Label htmlFor="show-only-used" className="font-normal">Used</Label> {/* Simplified label */}
-          </div>
+        {/* Display Active Filters as Chips */}
+        <div className="flex flex-wrap items-center gap-2 flex-grow min-h-[36px]"> {/* min-h to prevent layout jump */}
+          {selectedCategory !== 'all' && (
+            <Badge variant="secondary" className="py-1 px-2">Category: {selectedCategory}</Badge>
+          )}
+          {filterFunnyRate !== -1 && (
+            <Badge variant="secondary" className="py-1 px-2">Rating: {getFunnyRateLabel(filterFunnyRate)}</Badge>
+          )}
+          {showOnlyUsed && (
+            <Badge variant="secondary" className="py-1 px-2">Status: Used Only</Badge>
+          )}
         </div>
         
-        <Button variant="outline" onClick={handleClearFilters} className="ml-auto sm:ml-4">
-          <RotateCcw className="mr-2 h-4 w-4" /> Clear Filters
-        </Button>
+        {(selectedCategory !== 'all' || filterFunnyRate !== -1 || showOnlyUsed) && (
+            <Button variant="ghost" onClick={handleClearFilters} className="ml-auto text-sm p-2 h-auto self-center">
+              <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Clear All
+            </Button>
+        )}
       </div>
 
       <JokeList jokes={filteredJokes} />
@@ -189,4 +260,4 @@ export default function Home() {
     </div>
   );
 }
-
+    
