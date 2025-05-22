@@ -5,12 +5,16 @@ import { useState, useMemo, useEffect } from 'react';
 import { useJokes } from '@/contexts/JokeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import Header from '@/components/header';
-import JokeFilters from '@/components/joke-filters';
 import JokeList from '@/components/joke-list';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Loader2, Laugh, ChevronDown } from 'lucide-react';
+import { Loader2, Laugh, ChevronDown, ListFilter } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+
 
 export default function Home() {
   const { user, loading: authLoading } = useAuth();
@@ -28,11 +32,18 @@ export default function Home() {
   const [showUnused, setShowUnused] = useState<boolean>(true);
   const [filterFunnyRate, setFilterFunnyRate] = useState<number>(-1);
 
+  const categoryNames = useMemo(() => {
+    if (!categories) return [];
+    return categories.map(cat => cat.name).sort();
+  }, [categories]);
+
   const filteredJokes = useMemo(() => {
     if (!jokes) return [];
     return jokes.filter(joke => {
       const categoryMatch = selectedCategory === 'all' || joke.category === selectedCategory;
       const usageMatch = (showUsed && joke.used) || (showUnused && !joke.used);
+      // If neither showUsed nor showUnused is active, the usage filter effectively matches all jokes.
+      // If at least one is active, then usageMatch must be true.
       const usageFilterActive = showUsed || showUnused;
       const funnyRateMatch = filterFunnyRate === -1 || joke.funnyRate === filterFunnyRate;
 
@@ -82,21 +93,87 @@ export default function Home() {
       <Header title="Your Personal Joke Hub" />
 
       <div className="mb-8">
-        <JokeFilters
-          selectedCategory={selectedCategory}
-          onCategoryChange={setSelectedCategory}
-          showUsed={showUsed}
-          onShowUsedChange={setShowUsed}
-          showUnused={showUnused}
-          onShowUnusedChange={setShowUnused}
-          filterFunnyRate={filterFunnyRate}
-          onFilterFunnyRateChange={setFilterFunnyRate}
-        />
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center text-xl">
+              <ListFilter className="mr-2 h-5 w-5" /> Filter Jokes
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4 items-end">
+            {/* Category Filter */}
+            <div className="space-y-1.5">
+              <Label htmlFor="category-filter">Category</Label>
+              <Select
+                value={selectedCategory}
+                onValueChange={setSelectedCategory}
+                disabled={categories === null || categories.length === 0}
+              >
+                <SelectTrigger id="category-filter">
+                  <SelectValue placeholder={categories === null ? "Loading..." : "Select category"} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  {categoryNames.map((categoryName) => (
+                    <SelectItem key={categoryName} value={categoryName}>
+                      {categoryName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Funny Rate Filter */}
+            <div className="space-y-1.5">
+              <Label htmlFor="funny-rate-filter">Rating</Label>
+              <Select
+                value={filterFunnyRate.toString()}
+                onValueChange={(value) => setFilterFunnyRate(parseInt(value, 10))}
+              >
+                <SelectTrigger id="funny-rate-filter">
+                  <SelectValue placeholder="Select rating" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="-1">Any Rating</SelectItem>
+                  <SelectItem value="0">Unrated</SelectItem>
+                  {[1, 2, 3, 4, 5].map(rate => (
+                    <SelectItem key={rate} value={rate.toString()}>
+                      {rate} Star{rate > 1 ? 's' : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Usage Status Filters */}
+            <div className="space-y-1.5">
+              <Label>Usage Status</Label>
+              <div className="flex items-center space-x-4 pt-2 sm:pt-0"> {/* Adjusted padding for alignment */}
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="show-used"
+                    checked={showUsed}
+                    onCheckedChange={setShowUsed}
+                    aria-label="Show used jokes"
+                  />
+                  <Label htmlFor="show-used" className="font-normal">Used</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="show-unused"
+                    checked={showUnused}
+                    onCheckedChange={setShowUnused}
+                    aria-label="Show unused jokes"
+                  />
+                  <Label htmlFor="show-unused" className="font-normal">Unused</Label>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      <Separator className="my-8" />
 
-      <h2 className="text-2xl font-semibold mb-4 text-primary">Your Jokes</h2>
+      <h2 className="text-2xl font-semibold mb-6 text-primary">Your Jokes</h2>
       <JokeList jokes={filteredJokes} />
 
       {/* Load More Button */}
@@ -122,5 +199,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
