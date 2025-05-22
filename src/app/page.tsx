@@ -5,7 +5,7 @@ import { useState, useMemo, useEffect } from 'react';
 import type { FilterParams } from '@/contexts/JokeContext'; // Import FilterParams type
 import { useJokes } from '@/contexts/JokeContext';
 import { useAuth } from '@/contexts/AuthContext';
-import Header from '@/components/header';
+// import Header from '@/components/header'; // No longer using generic header here
 import JokeList from '@/components/joke-list';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -162,9 +162,12 @@ export default function Home() {
 
   return (
     <div className="container mx-auto p-4 md:p-8">
-      <Header title="" /> {/* Removed "Your Personal Joke Hub" title */}
+      <header className="mb-8 text-center"> {/* Hero Title Section */}
+        <h1 className="text-4xl font-bold tracking-tight text-primary sm:text-5xl">Jokes</h1>
+        <p className="mt-3 text-lg text-muted-foreground sm:text-xl">Get ready to laugh</p>
+      </header>
 
-      <div className="mb-6 p-4 border-b flex flex-wrap items-center gap-x-4 gap-y-2">
+      <div className="mb-6 p-4 flex flex-wrap items-center gap-x-4 gap-y-2"> {/* Removed border-b */}
         <Dialog open={isFilterModalOpen} onOpenChange={(isOpen) => {
           if (!isOpen) { 
             // If modal is closed without applying, revert temp states to active filters
@@ -175,7 +178,7 @@ export default function Home() {
           setIsFilterModalOpen(isOpen);
         }}>
           <DialogTrigger asChild>
-            <Button variant="outline" onClick={handleOpenFilterModal}>
+            <Button variant="outline" size="sm" onClick={handleOpenFilterModal}> {/* Made button smaller */}
               <FilterIcon className="mr-2 h-4 w-4" />
               Filters
               {hasActiveAppliedFilters && <span className="ml-2 h-2 w-2 rounded-full bg-primary" />}
@@ -333,17 +336,6 @@ export default function Home() {
           // Message if jokes are present but no more to load
           jokesToDisplay.length > 0 && !loadingInitialJokes && <p className="text-muted-foreground">No more jokes to load for the current filters.</p>
         )}
-         {/* Message if NO jokes are displayed and not loading initially.
-             This is now primarily handled by JokeList, but this serves as a fallback 
-             if JokeList somehow doesn't render or if this message is preferred.
-             However, to avoid duplication, JokeList's message should be primary.
-             So, we ensure this only shows if JokeList itself would show nothing.
-          */}
-         {/* Removed duplicated "no jokes" message. JokeList will handle this.
-          jokesToDisplay.length === 0 && !loadingInitialJokes && (
-            <p className="text-muted-foreground">No jokes found matching your criteria. Try adjusting the filters or adding new jokes!</p>
-          )
-        */}
       </div>
     </div>
   );
