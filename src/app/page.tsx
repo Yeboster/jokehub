@@ -6,11 +6,9 @@ import { useJokes } from '@/contexts/JokeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import Header from '@/components/header';
 import JokeList from '@/components/joke-list';
-import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Loader2, Laugh, ChevronDown, ListFilter } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Loader2, Laugh, ChevronDown, ListFilter, RotateCcw } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
@@ -42,14 +40,19 @@ export default function Home() {
     return jokes.filter(joke => {
       const categoryMatch = selectedCategory === 'all' || joke.category === selectedCategory;
       const usageMatch = (showUsed && joke.used) || (showUnused && !joke.used);
-      // If neither showUsed nor showUnused is active, the usage filter effectively matches all jokes.
-      // If at least one is active, then usageMatch must be true.
       const usageFilterActive = showUsed || showUnused;
       const funnyRateMatch = filterFunnyRate === -1 || joke.funnyRate === filterFunnyRate;
 
       return categoryMatch && (usageFilterActive ? usageMatch : true) && funnyRateMatch;
     });
   }, [jokes, selectedCategory, showUsed, showUnused, filterFunnyRate]);
+
+  const handleClearFilters = () => {
+    setSelectedCategory('all');
+    setFilterFunnyRate(-1);
+    setShowUsed(true);
+    setShowUnused(true);
+  };
 
   // Handle overall loading state (Auth + Initial Jokes)
   if (authLoading || (!user && !authLoading)) {
@@ -92,88 +95,88 @@ export default function Home() {
     <div className="container mx-auto p-4 md:p-8">
       <Header title="Your Personal Joke Hub" />
 
-      <div className="mb-8">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center text-xl">
-              <ListFilter className="mr-2 h-5 w-5" /> Filter Jokes
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4 items-end">
-            {/* Category Filter */}
-            <div className="space-y-1.5">
-              <Label htmlFor="category-filter">Category</Label>
-              <Select
-                value={selectedCategory}
-                onValueChange={setSelectedCategory}
-                disabled={categories === null || categories.length === 0}
-              >
-                <SelectTrigger id="category-filter">
-                  <SelectValue placeholder={categories === null ? "Loading..." : "Select category"} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  {categoryNames.map((categoryName) => (
-                    <SelectItem key={categoryName} value={categoryName}>
-                      {categoryName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+      {/* New Filter Bar */}
+      <div className="mb-6 p-4 border-b flex flex-wrap items-end gap-x-6 gap-y-4">
+        <div className="flex items-center text-lg font-semibold text-primary mr-2 shrink-0">
+          <ListFilter className="mr-2 h-5 w-5" />
+          Filters
+        </div>
 
-            {/* Funny Rate Filter */}
-            <div className="space-y-1.5">
-              <Label htmlFor="funny-rate-filter">Rating</Label>
-              <Select
-                value={filterFunnyRate.toString()}
-                onValueChange={(value) => setFilterFunnyRate(parseInt(value, 10))}
-              >
-                <SelectTrigger id="funny-rate-filter">
-                  <SelectValue placeholder="Select rating" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="-1">Any Rating</SelectItem>
-                  <SelectItem value="0">Unrated</SelectItem>
-                  {[1, 2, 3, 4, 5].map(rate => (
-                    <SelectItem key={rate} value={rate.toString()}>
-                      {rate} Star{rate > 1 ? 's' : ''}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+        {/* Category Filter */}
+        <div className="space-y-1.5 min-w-[150px] flex-grow sm:flex-grow-0">
+          <Label htmlFor="category-filter">Category</Label>
+          <Select
+            value={selectedCategory}
+            onValueChange={setSelectedCategory}
+            disabled={categories === null || categories.length === 0}
+          >
+            <SelectTrigger id="category-filter">
+              <SelectValue placeholder={categories === null ? "Loading..." : "Select category"} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Categories</SelectItem>
+              {categoryNames.map((categoryName) => (
+                <SelectItem key={categoryName} value={categoryName}>
+                  {categoryName}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-            {/* Usage Status Filters */}
-            <div className="space-y-1.5">
-              <Label>Usage Status</Label>
-              <div className="flex items-center space-x-4 pt-2 sm:pt-0"> {/* Adjusted padding for alignment */}
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="show-used"
-                    checked={showUsed}
-                    onCheckedChange={setShowUsed}
-                    aria-label="Show used jokes"
-                  />
-                  <Label htmlFor="show-used" className="font-normal">Used</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="show-unused"
-                    checked={showUnused}
-                    onCheckedChange={setShowUnused}
-                    aria-label="Show unused jokes"
-                  />
-                  <Label htmlFor="show-unused" className="font-normal">Unused</Label>
-                </div>
-              </div>
+        {/* Funny Rate Filter */}
+        <div className="space-y-1.5 min-w-[150px] flex-grow sm:flex-grow-0">
+          <Label htmlFor="funny-rate-filter">Rating</Label>
+          <Select
+            value={filterFunnyRate.toString()}
+            onValueChange={(value) => setFilterFunnyRate(parseInt(value, 10))}
+          >
+            <SelectTrigger id="funny-rate-filter">
+              <SelectValue placeholder="Select rating" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="-1">Any Rating</SelectItem>
+              <SelectItem value="0">Unrated</SelectItem>
+              {[1, 2, 3, 4, 5].map(rate => (
+                <SelectItem key={rate} value={rate.toString()}>
+                  {rate} Star{rate > 1 ? 's' : ''}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Usage Status Filters */}
+        <div className="space-y-1.5 min-w-[180px] flex-grow sm:flex-grow-0">
+          <Label>Usage Status</Label>
+          <div className="flex items-center space-x-4 pt-1">
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="show-used"
+                checked={showUsed}
+                onCheckedChange={setShowUsed}
+                aria-label="Show used jokes"
+              />
+              <Label htmlFor="show-used" className="font-normal">Used</Label>
             </div>
-          </CardContent>
-        </Card>
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="show-unused"
+                checked={showUnused}
+                onCheckedChange={setShowUnused}
+                aria-label="Show unused jokes"
+              />
+              <Label htmlFor="show-unused" className="font-normal">Unused</Label>
+            </div>
+          </div>
+        </div>
+        
+        <Button variant="outline" onClick={handleClearFilters} className="ml-auto sm:ml-4">
+          <RotateCcw className="mr-2 h-4 w-4" /> Clear Filters
+        </Button>
       </div>
 
-
-      <h2 className="text-2xl font-semibold mb-6 text-primary">Your Jokes</h2>
+      {/* The H2 "Your Jokes" is removed as the filter bar and table caption provide context */}
       <JokeList jokes={filteredJokes} />
 
       {/* Load More Button */}
