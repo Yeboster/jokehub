@@ -8,12 +8,15 @@ import Header from '@/components/header';
 import JokeList from '@/components/joke-list';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Loader2, Laugh, ChevronDown, RotateCcw, Filter as FilterIcon } from 'lucide-react'; // Added FilterIcon
+import { Loader2, Laugh, ChevronDown, RotateCcw, Filter as FilterIcon, Check, ChevronsUpDown, XIcon } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { cn } from '@/lib/utils';
 
 export default function Home() {
   const { user, loading: authLoading } = useAuth();
@@ -26,16 +29,20 @@ export default function Home() {
     loadingMoreJokes
    } = useJokes();
 
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [showOnlyUsed, setShowOnlyUsed] = useState<boolean>(false);
   const [filterFunnyRate, setFilterFunnyRate] = useState<number>(-1);
 
   // State for filter modal
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [isCategoryPopoverOpen, setIsCategoryPopoverOpen] = useState(false);
+
   // Temporary states for modal selections
-  const [tempSelectedCategory, setTempSelectedCategory] = useState<string>(selectedCategory);
+  const [tempSelectedCategories, setTempSelectedCategories] = useState<string[]>(selectedCategories);
   const [tempFilterFunnyRate, setTempFilterFunnyRate] = useState<number>(filterFunnyRate);
   const [tempShowOnlyUsed, setTempShowOnlyUsed] = useState<boolean>(showOnlyUsed);
+  const [categorySearch, setCategorySearch] = useState('');
+
 
   const categoryNames = useMemo(() => {
     if (!categories) return [];
@@ -45,43 +52,63 @@ export default function Home() {
   const filteredJokes = useMemo(() => {
     if (!jokes) return [];
     return jokes.filter(joke => {
-      const categoryMatch = selectedCategory === 'all' || joke.category === selectedCategory;
+      const categoryMatch = selectedCategories.length === 0 || selectedCategories.includes(joke.category);
       const usageMatch = showOnlyUsed ? joke.used === true : true;
       const funnyRateMatch = filterFunnyRate === -1 || joke.funnyRate === filterFunnyRate;
       return categoryMatch && usageMatch && funnyRateMatch;
     });
-  }, [jokes, selectedCategory, showOnlyUsed, filterFunnyRate]);
+  }, [jokes, selectedCategories, showOnlyUsed, filterFunnyRate]);
 
   const handleOpenFilterModal = () => {
     // Initialize temporary states with current active filters
-    setTempSelectedCategory(selectedCategory);
+    setTempSelectedCategories([...selectedCategories]);
     setTempFilterFunnyRate(filterFunnyRate);
     setTempShowOnlyUsed(showOnlyUsed);
+    setCategorySearch(''); // Reset search for category popover
     setIsFilterModalOpen(true);
   };
 
   const handleApplyFilters = () => {
-    setSelectedCategory(tempSelectedCategory);
+    setSelectedCategories([...tempSelectedCategories]);
     setFilterFunnyRate(tempFilterFunnyRate);
     setShowOnlyUsed(tempShowOnlyUsed);
     setIsFilterModalOpen(false);
   };
 
   const handleClearFilters = () => {
-    setSelectedCategory('all');
+    setSelectedCategories([]);
     setFilterFunnyRate(-1);
     setShowOnlyUsed(false);
     // Also reset temp states to reflect clearing
-    setTempSelectedCategory('all');
+    setTempSelectedCategories([]);
     setTempFilterFunnyRate(-1);
     setTempShowOnlyUsed(false);
+    setCategorySearch('');
   };
   
   const getFunnyRateLabel = (rate: number): string => {
     if (rate === 0) return "Unrated";
-    if (rate === -1) return "Any Rating"; // Should not be displayed as a chip if -1
+    if (rate === -1) return "Any Rating"; 
     return `${rate} Star${rate > 1 ? 's' : ''}`;
   };
+
+  const toggleCategorySelection = (categoryName: string) => {
+    setTempSelectedCategories(prev =>
+      prev.includes(categoryName)
+        ? prev.filter(c => c !== categoryName)
+        : [...prev, categoryName]
+    );
+  };
+  
+  const filteredCategoryOptions = useMemo(() => {
+    if (!categoryNames) return [];
+    if (!categorySearch) return categoryNames;
+    return categoryNames.filter(name => 
+      name.toLowerCase().includes(categorySearch.toLowerCase())
+    );
+  }, [categoryNames, categorySearch]);
+
+  const hasActiveFilters = selectedCategories.length > 0 || filterFunnyRate !== -1 || showOnlyUsed;
 
   // Handle overall loading state (Auth + Initial Jokes)
   if (authLoading || (!user && !authLoading)) {
@@ -124,13 +151,10 @@ export default function Home() {
     <div className="container mx-auto p-4 md:p-8">
       <Header title="Your Personal Joke Hub" />
 
-      {/* New Filter Bar with Modal Trigger and Chips */}
       <div className="mb-6 p-4 border-b flex flex-wrap items-center gap-x-4 gap-y-2">
         <Dialog open={isFilterModalOpen} onOpenChange={(isOpen) => {
           if (!isOpen) { 
-            // When closing dialog without applying (e.g. Esc, X button),
-            // reset temp states to match current active filters.
-            setTempSelectedCategory(selectedCategory);
+            setTempSelectedCategories([...selectedCategories]);
             setTempFilterFunnyRate(filterFunnyRate);
             setTempShowOnlyUsed(showOnlyUsed);
           }
@@ -140,6 +164,7 @@ export default function Home() {
             <Button variant="outline" onClick={handleOpenFilterModal}>
               <FilterIcon className="mr-2 h-4 w-4" />
               Filters
+              {hasActiveFilters && <span className="ml-2 h-2 w-2 rounded-full bg-primary" />}
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
@@ -149,27 +174,70 @@ export default function Home() {
                 Select your filter preferences below. Click apply to see the changes.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
+            <div className="grid gap-6 py-4"> {/* Increased gap */}
               {/* Category Filter */}
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="modal-category-filter" className="text-right">Category</Label>
-                <Select
-                  value={tempSelectedCategory}
-                  onValueChange={setTempSelectedCategory}
-                  disabled={categories === null || categories.length === 0}
-                >
-                  <SelectTrigger id="modal-category-filter" className="col-span-3">
-                    <SelectValue placeholder={categories === null ? "Loading..." : "Select category"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Categories</SelectItem>
-                    {categoryNames.map((categoryName) => (
-                      <SelectItem key={categoryName} value={categoryName}>
-                        {categoryName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-4 items-start gap-4">
+                <Label htmlFor="modal-category-filter" className="text-right pt-2">Categories</Label>
+                <Popover open={isCategoryPopoverOpen} onOpenChange={setIsCategoryPopoverOpen}>
+                  <PopoverTrigger asChild className="col-span-3">
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={isCategoryPopoverOpen}
+                      className="w-full justify-between text-left font-normal h-auto min-h-10"
+                       disabled={categories === null || categories.length === 0}
+                    >
+                      <div className="flex flex-wrap gap-1">
+                        {tempSelectedCategories.length === 0 && <span className="text-muted-foreground">Select categories...</span>}
+                        {tempSelectedCategories.map(cat => (
+                          <Badge key={cat} variant="secondary" className="py-0.5 px-1.5">
+                            {cat}
+                            <button
+                              type="button"
+                              className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-1"
+                              onClick={(e) => { e.stopPropagation(); toggleCategorySelection(cat);}}
+                            >
+                              <XIcon className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                            </button>
+                          </Badge>
+                        ))}
+                      </div>
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                    <Command>
+                      <CommandInput 
+                        placeholder="Search categories..."
+                        value={categorySearch}
+                        onValueChange={setCategorySearch}
+                      />
+                      <CommandList>
+                        <CommandEmpty>No categories found.</CommandEmpty>
+                        <CommandGroup>
+                          {filteredCategoryOptions.map((categoryName) => (
+                            <CommandItem
+                              key={categoryName}
+                              value={categoryName}
+                              onSelect={() => {
+                                toggleCategorySelection(categoryName);
+                                // Don't close popover on select for multi-select
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  tempSelectedCategories.includes(categoryName) ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              {categoryName}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
 
               {/* Funny Rate Filter */}
@@ -216,10 +284,10 @@ export default function Home() {
         </Dialog>
 
         {/* Display Active Filters as Chips */}
-        <div className="flex flex-wrap items-center gap-2 flex-grow min-h-[36px]"> {/* min-h to prevent layout jump */}
-          {selectedCategory !== 'all' && (
-            <Badge variant="secondary" className="py-1 px-2">Category: {selectedCategory}</Badge>
-          )}
+        <div className="flex flex-wrap items-center gap-2 flex-grow min-h-[36px]">
+          {selectedCategories.map(category => (
+             <Badge key={category} variant="secondary" className="py-1 px-2">Category: {category}</Badge>
+          ))}
           {filterFunnyRate !== -1 && (
             <Badge variant="secondary" className="py-1 px-2">Rating: {getFunnyRateLabel(filterFunnyRate)}</Badge>
           )}
@@ -228,7 +296,7 @@ export default function Home() {
           )}
         </div>
         
-        {(selectedCategory !== 'all' || filterFunnyRate !== -1 || showOnlyUsed) && (
+        {hasActiveFilters && (
             <Button variant="ghost" onClick={handleClearFilters} className="ml-auto text-sm p-2 h-auto self-center">
               <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Clear All
             </Button>
@@ -261,3 +329,5 @@ export default function Home() {
   );
 }
     
+
+      
