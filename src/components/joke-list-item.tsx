@@ -46,48 +46,27 @@ const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
         <p className="text-sm text-foreground leading-relaxed">{joke.text}</p>
       </CardContent>
       <CardFooter className="bg-muted/50 p-4 border-t border-border/50 flex flex-col gap-3">
+        {/* Line 1: Stars, Category | Used, Edit */}
         <div className="flex justify-between items-center w-full">
-          <Badge variant="secondary" className="flex items-center gap-1.5 py-1 px-2.5 text-xs">
-            <Tag className="h-3.5 w-3.5" />
-            {joke.category}
-          </Badge>
-          <div className="flex items-center gap-x-3 gap-y-1 text-xs text-muted-foreground flex-wrap justify-end">
-            <div className="flex items-center gap-1">
-                <CalendarDays className="h-3.5 w-3.5" />
-                {format(joke.dateAdded, 'PP')}
+          {/* Left part: Stars and Category */}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center"> {/* Wrapper for stars and potential loader */}
+              <StarRating
+                rating={joke.funnyRate}
+                onRatingChange={handleRatingChange}
+                size={18}
+                disabled={isRating || isTogglingUsed}
+                starClassName="text-accent"
+              />
+              {isRating && <Loader2 className="ml-2 h-4 w-4 animate-spin text-primary" />}
             </div>
-            {currentUser?.email && joke.userId === currentUser.uid && (
-              <TooltipProvider delayDuration={200}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="flex items-center gap-1 cursor-default">
-                        <UserCircle className="h-3.5 w-3.5" />
-                        <span className="truncate max-w-[100px] sm:max-w-[120px]"> 
-                            {currentUser.email}
-                        </span>
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Posted by: {currentUser.email}</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-          </div>
-        </div>
-        
-        <div className="flex justify-between items-center w-full">
-          <div className="flex items-center">
-            <StarRating
-              rating={joke.funnyRate}
-              onRatingChange={handleRatingChange}
-              size={18} 
-              disabled={isRating || isTogglingUsed}
-              starClassName="text-accent"
-            />
-            {isRating && <Loader2 className="ml-2 h-4 w-4 animate-spin text-primary" />}
+            <Badge variant="secondary" className="flex items-center gap-1.5 py-1 px-2.5 text-xs">
+              <Tag className="h-3.5 w-3.5" />
+              {joke.category}
+            </Badge>
           </div>
 
+          {/* Right part: Used and Edit buttons */}
           <div className="flex items-center gap-1.5">
             <TooltipProvider delayDuration={300}>
               <Tooltip>
@@ -134,9 +113,35 @@ const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
             )}
           </div>
         </div>
+        
+        {/* Line 2: Date and User */}
+        <div className="flex justify-between items-center w-full text-xs text-muted-foreground pt-1">
+          <div className="flex items-center gap-1">
+              <CalendarDays className="h-3.5 w-3.5" />
+              {format(joke.dateAdded, 'PP')}
+          </div>
+          {currentUser?.email && joke.userId === currentUser.uid && (
+            <TooltipProvider delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-1 cursor-default">
+                      <UserCircle className="h-3.5 w-3.5" />
+                      <span className="truncate max-w-[100px] sm:max-w-[120px]"> 
+                          {currentUser.email}
+                      </span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Posted by: {currentUser.email}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </div>
       </CardFooter>
     </Card>
   );
 };
 
 export default JokeListItem;
+
