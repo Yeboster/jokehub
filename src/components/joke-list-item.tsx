@@ -3,29 +3,27 @@
 
 import type { FC } from 'react';
 import { format } from 'date-fns';
-import { Check, Square, Loader2, Pencil } from 'lucide-react'; // Removed ChevronDown, added Pencil
-import { useState } from 'react'; // Removed useRef
+import { Check, Square, Loader2, Pencil, Tag, CalendarDays, StarIcon as LucideStarIcon } from 'lucide-react';
+import { useState } from 'react';
 import Link from 'next/link';
 
 import type { Joke } from '@/lib/types';
-import { TableCell, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge'; // Added Badge
+import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import StarRating from '@/components/StarRating';
 import { useJokes } from '@/contexts/JokeContext';
-// Popover, PopoverContent, PopoverTrigger, Label, Input removed as they are no longer used for category editing here
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'; // Added Card components
+import { cn } from '@/lib/utils';
 
 interface JokeListItemProps {
   joke: Joke;
 }
 
 const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
-  // Removed categories, updateJokeCategory from useJokes as category isn't edited here anymore
   const { rateJoke, toggleUsed } = useJokes();
   const [isTogglingUsed, setIsTogglingUsed] = useState(false);
   const [isRating, setIsRating] = useState(false);
-  // Removed category editing state: isUpdatingCategory, isCategoryPopoverOpen, editableCategory, categoryInputRef, handleCategoryUpdate, handlePopoverOpenChange
 
   const handleRatingChange = async (newRating: number) => {
     if (joke.funnyRate === newRating) return;
@@ -41,71 +39,81 @@ const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
   };
 
   return (
-    <TableRow key={joke.id} data-state={joke.used ? 'selected' : undefined}>
-      <TableCell className="font-medium max-w-xs truncate" title={joke.text}>{joke.text}</TableCell>
-      <TableCell>
-        {/* Display category using Badge */}
-        <Badge variant="secondary">{joke.category}</Badge>
-      </TableCell>
-      <TableCell>
-        <div className="flex items-center">
+    <Card className={cn("flex flex-col shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-lg overflow-hidden", joke.used ? "bg-muted/30 border-primary/20" : "bg-card")}>
+      <CardContent className="p-5 flex-grow">
+        <p className="text-sm text-foreground leading-relaxed">{joke.text}</p>
+      </CardContent>
+      <CardFooter className="bg-muted/50 p-4 border-t border-border/50 flex flex-col gap-3">
+        <div className="flex justify-between items-center w-full">
+          <Badge variant="secondary" className="flex items-center gap-1.5 py-1 px-2.5 text-xs">
+            <Tag className="h-3.5 w-3.5" />
+            {joke.category}
+          </Badge>
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <CalendarDays className="h-3.5 w-3.5" />
+            {format(joke.dateAdded, 'PP')}
+          </div>
+        </div>
+        
+        <div className="flex justify-between items-center w-full">
+          <div className="flex items-center">
             <StarRating
               rating={joke.funnyRate}
               onRatingChange={handleRatingChange}
-              size={18}
-              disabled={isRating}
+              size={18} // Adjusted size for card layout
+              disabled={isRating || isTogglingUsed}
+              starClassName="text-accent"
             />
-            {isRating && <Loader2 className="ml-2 h-4 w-4 animate-spin inline-flex" />}
-        </div>
-      </TableCell>
-      <TableCell>{format(joke.dateAdded, 'PP')}</TableCell>
-      <TableCell className="text-center">
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleToggleUsed}
-                disabled={isTogglingUsed}
-                aria-label={joke.used ? 'Mark as unused' : 'Mark as used'}
-              >
-                {isTogglingUsed ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : joke.used ? (
-                  <Check className="text-green-600" />
-                ) : (
-                  <Square />
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>{joke.used ? 'Mark as unused' : 'Mark as used'}</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      </TableCell>
-       {/* Actions Cell */}
-      <TableCell className="text-center">
-        <TooltipProvider>
-            <Tooltip>
+            {isRating && <Loader2 className="ml-2 h-4 w-4 animate-spin text-primary" />}
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <TooltipProvider delayDuration={300}>
+              <Tooltip>
                 <TooltipTrigger asChild>
-                     <Button variant="ghost" size="icon" asChild>
-                        <Link href={`/edit-joke/${joke.id}`}>
-                            <Pencil className="h-4 w-4" />
-                            <span className="sr-only">Edit Joke</span>
-                        </Link>
-                    </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={handleToggleUsed}
+                    disabled={isTogglingUsed || isRating}
+                    aria-label={joke.used ? 'Mark as unused' : 'Mark as used'}
+                  >
+                    {isTogglingUsed ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : joke.used ? (
+                      <Check className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <Square className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                    <p>Edit Joke</p>
+                  <p>{joke.used ? 'Mark as unused' : 'Mark as used'}</p>
                 </TooltipContent>
-            </Tooltip>
-        </TooltipProvider>
-      </TableCell>
-    </TableRow>
+              </Tooltip>
+            </TooltipProvider>
+
+            <TooltipProvider delayDuration={300}>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                         <Button variant="ghost" size="icon" className="h-8 w-8" asChild disabled={isRating || isTogglingUsed}>
+                            <Link href={`/edit-joke/${joke.id}`}>
+                                <Pencil className="h-4 w-4 text-muted-foreground hover:text-primary" />
+                                <span className="sr-only">Edit Joke</span>
+                            </Link>
+                        </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                        <p>Edit Joke</p>
+                    </TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
+          </div>
+        </div>
+      </CardFooter>
+    </Card>
   );
 };
 
 export default JokeListItem;
-
