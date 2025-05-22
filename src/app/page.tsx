@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from 'react';
+import type { FilterParams } from '@/contexts/JokeContext'; // Import FilterParams type
 import { useJokes } from '@/contexts/JokeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import Header from '@/components/header';
@@ -23,25 +24,37 @@ export default function Home() {
   const {
     jokes,
     categories,
-    loadMoreJokes,
+    loadJokesWithFilters, // Use new function for applying filters
+    loadMoreFilteredJokes,  // Use new function for loading more
     hasMoreJokes,
     loadingInitialJokes,
     loadingMoreJokes
    } = useJokes();
 
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [showOnlyUsed, setShowOnlyUsed] = useState<boolean>(false);
-  const [filterFunnyRate, setFilterFunnyRate] = useState<number>(-1);
+  // These states now represent the *active* filters applied to the list
+  const [activeFilters, setActiveFilters] = useState<FilterParams>({
+    selectedCategories: [],
+    filterFunnyRate: -1,
+    showOnlyUsed: false,
+  });
 
   // State for filter modal
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [isCategoryPopoverOpen, setIsCategoryPopoverOpen] = useState(false);
 
-  // Temporary states for modal selections
-  const [tempSelectedCategories, setTempSelectedCategories] = useState<string[]>(selectedCategories);
-  const [tempFilterFunnyRate, setTempFilterFunnyRate] = useState<number>(filterFunnyRate);
-  const [tempShowOnlyUsed, setTempShowOnlyUsed] = useState<boolean>(showOnlyUsed);
+  // Temporary states for modal selections, initialized from activeFilters
+  const [tempSelectedCategories, setTempSelectedCategories] = useState<string[]>(activeFilters.selectedCategories);
+  const [tempFilterFunnyRate, setTempFilterFunnyRate] = useState<number>(activeFilters.filterFunnyRate);
+  const [tempShowOnlyUsed, setTempShowOnlyUsed] = useState<boolean>(activeFilters.showOnlyUsed);
   const [categorySearch, setCategorySearch] = useState('');
+
+  useEffect(() => {
+    // When activeFilters change (e.g. on apply or clear), re-initialize temp states for the modal
+    // This ensures the modal opens with the currently active filters
+    setTempSelectedCategories([...activeFilters.selectedCategories]);
+    setTempFilterFunnyRate(activeFilters.filterFunnyRate);
+    setTempShowOnlyUsed(activeFilters.showOnlyUsed);
+  }, [activeFilters]);
 
 
   const categoryNames = useMemo(() => {
@@ -49,41 +62,45 @@ export default function Home() {
     return categories.map(cat => cat.name).sort();
   }, [categories]);
 
-  const filteredJokes = useMemo(() => {
-    if (!jokes) return [];
-    return jokes.filter(joke => {
-      const categoryMatch = selectedCategories.length === 0 || selectedCategories.includes(joke.category);
-      const usageMatch = showOnlyUsed ? joke.used === true : true;
-      const funnyRateMatch = filterFunnyRate === -1 || joke.funnyRate === filterFunnyRate;
-      return categoryMatch && usageMatch && funnyRateMatch;
-    });
-  }, [jokes, selectedCategories, showOnlyUsed, filterFunnyRate]);
+  // The `filteredJokes` logic is now primarily handled by JokeContext fetching.
+  // This useMemo simply returns the jokes received from the context.
+  // The context itself ensures these jokes are already filtered.
+  const jokesToDisplay = useMemo(() => jokes ?? [], [jokes]);
+
 
   const handleOpenFilterModal = () => {
-    // Initialize temporary states with current active filters
-    setTempSelectedCategories([...selectedCategories]);
-    setTempFilterFunnyRate(filterFunnyRate);
-    setTempShowOnlyUsed(showOnlyUsed);
-    setCategorySearch(''); // Reset search for category popover
+    // Initialize temporary states with current active filters from `activeFilters` state
+    setTempSelectedCategories([...activeFilters.selectedCategories]);
+    setTempFilterFunnyRate(activeFilters.filterFunnyRate);
+    setTempShowOnlyUsed(activeFilters.showOnlyUsed);
+    setCategorySearch(''); 
     setIsFilterModalOpen(true);
   };
 
   const handleApplyFilters = () => {
-    setSelectedCategories([...tempSelectedCategories]);
-    setFilterFunnyRate(tempFilterFunnyRate);
-    setShowOnlyUsed(tempShowOnlyUsed);
+    const newFilters: FilterParams = {
+      selectedCategories: [...tempSelectedCategories],
+      filterFunnyRate: tempFilterFunnyRate,
+      showOnlyUsed: tempShowOnlyUsed,
+    };
+    setActiveFilters(newFilters); // Update active filters state
+    loadJokesWithFilters(newFilters); // Tell context to fetch with these filters
     setIsFilterModalOpen(false);
   };
 
   const handleClearFilters = () => {
-    setSelectedCategories([]);
-    setFilterFunnyRate(-1);
-    setShowOnlyUsed(false);
-    // Also reset temp states to reflect clearing
-    setTempSelectedCategories([]);
+    const defaultFilters: FilterParams = {
+      selectedCategories: [],
+      filterFunnyRate: -1,
+      showOnlyUsed: false,
+    };
+    setActiveFilters(defaultFilters); // Reset active filters state
+    setTempSelectedCategories([]); // Reset temp modal states as well
     setTempFilterFunnyRate(-1);
     setTempShowOnlyUsed(false);
     setCategorySearch('');
+    loadJokesWithFilters(defaultFilters); // Tell context to fetch with default filters
+    // Modal will close automatically if open due to onOpenChange, or remain closed
   };
   
   const getFunnyRateLabel = (rate: number): string => {
@@ -108,9 +125,8 @@ export default function Home() {
     );
   }, [categoryNames, categorySearch]);
 
-  const hasActiveFilters = selectedCategories.length > 0 || filterFunnyRate !== -1 || showOnlyUsed;
+  const hasActiveAppliedFilters = activeFilters.selectedCategories.length > 0 || activeFilters.filterFunnyRate !== -1 || activeFilters.showOnlyUsed;
 
-  // Handle overall loading state (Auth + Initial Jokes)
   if (authLoading || (!user && !authLoading)) {
     return (
       <div className="container mx-auto p-4 md:p-8 flex flex-col justify-center items-center min-h-[calc(100vh-8rem)]">
@@ -120,7 +136,6 @@ export default function Home() {
     );
   }
 
-  // Handle logged out state
   if (!user) {
     return (
       <div className="container mx-auto p-4 md:p-8 text-center flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
@@ -136,7 +151,6 @@ export default function Home() {
     );
   }
 
-  // Handle initial data loading for logged-in user
   if (loadingInitialJokes || categories === null || jokes === null) {
     return (
       <div className="container mx-auto p-4 md:p-8 flex flex-col justify-center items-center min-h-[calc(100vh-8rem)]">
@@ -146,7 +160,6 @@ export default function Home() {
     );
   }
 
-  // Main content when logged in and data is loaded
   return (
     <div className="container mx-auto p-4 md:p-8">
       <Header title="Your Personal Joke Hub" />
@@ -154,9 +167,10 @@ export default function Home() {
       <div className="mb-6 p-4 border-b flex flex-wrap items-center gap-x-4 gap-y-2">
         <Dialog open={isFilterModalOpen} onOpenChange={(isOpen) => {
           if (!isOpen) { 
-            setTempSelectedCategories([...selectedCategories]);
-            setTempFilterFunnyRate(filterFunnyRate);
-            setTempShowOnlyUsed(showOnlyUsed);
+            // If modal is closed without applying, revert temp states to active filters
+            setTempSelectedCategories([...activeFilters.selectedCategories]);
+            setTempFilterFunnyRate(activeFilters.filterFunnyRate);
+            setTempShowOnlyUsed(activeFilters.showOnlyUsed);
           }
           setIsFilterModalOpen(isOpen);
         }}>
@@ -164,7 +178,7 @@ export default function Home() {
             <Button variant="outline" onClick={handleOpenFilterModal}>
               <FilterIcon className="mr-2 h-4 w-4" />
               Filters
-              {hasActiveFilters && <span className="ml-2 h-2 w-2 rounded-full bg-primary" />}
+              {hasActiveAppliedFilters && <span className="ml-2 h-2 w-2 rounded-full bg-primary" />}
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
@@ -174,8 +188,7 @@ export default function Home() {
                 Select your filter preferences below. Click apply to see the changes.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-6 py-4"> {/* Increased gap */}
-              {/* Category Filter */}
+            <div className="grid gap-6 py-4">
               <div className="grid grid-cols-4 items-start gap-4">
                 <Label htmlFor="modal-category-filter" className="text-right pt-2">Categories</Label>
                 <Popover open={isCategoryPopoverOpen} onOpenChange={setIsCategoryPopoverOpen}>
@@ -221,7 +234,6 @@ export default function Home() {
                               value={categoryName}
                               onSelect={() => {
                                 toggleCategorySelection(categoryName);
-                                // Don't close popover on select for multi-select
                               }}
                             >
                               <Check
@@ -240,7 +252,6 @@ export default function Home() {
                 </Popover>
               </div>
 
-              {/* Funny Rate Filter */}
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="modal-funny-rate-filter" className="text-right">Rating</Label>
                 <Select
@@ -262,7 +273,6 @@ export default function Home() {
                 </Select>
               </div>
 
-              {/* Usage Status Filter */}
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="modal-show-only-used" className="text-right">Usage</Label>
                 <div className="col-span-3 flex items-center space-x-2">
@@ -283,33 +293,31 @@ export default function Home() {
           </DialogContent>
         </Dialog>
 
-        {/* Display Active Filters as Chips */}
         <div className="flex flex-wrap items-center gap-2 flex-grow min-h-[36px]">
-          {selectedCategories.map(category => (
+          {activeFilters.selectedCategories.map(category => (
              <Badge key={category} variant="secondary" className="py-1 px-2">Category: {category}</Badge>
           ))}
-          {filterFunnyRate !== -1 && (
-            <Badge variant="secondary" className="py-1 px-2">Rating: {getFunnyRateLabel(filterFunnyRate)}</Badge>
+          {activeFilters.filterFunnyRate !== -1 && (
+            <Badge variant="secondary" className="py-1 px-2">Rating: {getFunnyRateLabel(activeFilters.filterFunnyRate)}</Badge>
           )}
-          {showOnlyUsed && (
+          {activeFilters.showOnlyUsed && (
             <Badge variant="secondary" className="py-1 px-2">Status: Used Only</Badge>
           )}
         </div>
         
-        {hasActiveFilters && (
+        {hasActiveAppliedFilters && (
             <Button variant="ghost" onClick={handleClearFilters} className="ml-auto text-sm p-2 h-auto self-center">
               <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Clear All
             </Button>
         )}
       </div>
 
-      <JokeList jokes={filteredJokes} />
+      <JokeList jokes={jokesToDisplay} />
 
-      {/* Load More Button */}
       <div className="mt-8 text-center">
         {hasMoreJokes ? (
           <Button
-            onClick={loadMoreJokes}
+            onClick={loadMoreFilteredJokes} // Use the new context function
             disabled={loadingMoreJokes}
             variant="outline"
             size="lg"
@@ -322,12 +330,13 @@ export default function Home() {
             {loadingMoreJokes ? 'Loading...' : 'Load More Jokes'}
           </Button>
         ) : (
-          jokes.length > 0 && <p className="text-muted-foreground">No more jokes to load.</p>
+          jokesToDisplay.length > 0 && <p className="text-muted-foreground">No more jokes to load for the current filters.</p>
+        )}
+         { jokesToDisplay.length === 0 && !loadingInitialJokes && (
+          <p className="text-muted-foreground">No jokes found matching your criteria. Try adjusting the filters or adding new jokes!</p>
         )}
       </div>
     </div>
   );
 }
     
-
-      
