@@ -162,7 +162,7 @@ export default function Home() {
 
   return (
     <div className="container mx-auto p-4 md:p-8">
-      <Header title="Your Personal Joke Hub" />
+      <Header title="" /> {/* Removed "Your Personal Joke Hub" title */}
 
       <div className="mb-6 p-4 border-b flex flex-wrap items-center gap-x-4 gap-y-2">
         <Dialog open={isFilterModalOpen} onOpenChange={(isOpen) => {
@@ -330,11 +330,20 @@ export default function Home() {
             {loadingMoreJokes ? 'Loading...' : 'Load More Jokes'}
           </Button>
         ) : (
-          jokesToDisplay.length > 0 && <p className="text-muted-foreground">No more jokes to load for the current filters.</p>
+          // Message if jokes are present but no more to load
+          jokesToDisplay.length > 0 && !loadingInitialJokes && <p className="text-muted-foreground">No more jokes to load for the current filters.</p>
         )}
-         { jokesToDisplay.length === 0 && !loadingInitialJokes && (
-          <p className="text-muted-foreground">No jokes found matching your criteria. Try adjusting the filters or adding new jokes!</p>
-        )}
+         {/* Message if NO jokes are displayed and not loading initially.
+             This is now primarily handled by JokeList, but this serves as a fallback 
+             if JokeList somehow doesn't render or if this message is preferred.
+             However, to avoid duplication, JokeList's message should be primary.
+             So, we ensure this only shows if JokeList itself would show nothing.
+          */}
+         {/* Removed duplicated "no jokes" message. JokeList will handle this.
+          jokesToDisplay.length === 0 && !loadingInitialJokes && (
+            <p className="text-muted-foreground">No jokes found matching your criteria. Try adjusting the filters or adding new jokes!</p>
+          )
+        */}
       </div>
     </div>
   );
