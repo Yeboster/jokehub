@@ -18,7 +18,7 @@ const JokeList: FC<JokeListProps> = ({ jokes }) => {
 
   return (
     <Table>
-      <TableCaption>A list of your jokes.</TableCaption>
+      <TableCaption></TableCaption> {/* Removed text content */}
       <TableHeader>
         <TableRow>
           <TableHead className="w-[35%]">Joke</TableHead>
@@ -39,3 +39,4 @@ const JokeList: FC<JokeListProps> = ({ jokes }) => {
 };
 
 export default JokeList;
+
