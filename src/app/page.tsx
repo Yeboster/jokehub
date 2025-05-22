@@ -26,8 +26,7 @@ export default function Home() {
    } = useJokes();
 
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [showUsed, setShowUsed] = useState<boolean>(true);
-  const [showUnused, setShowUnused] = useState<boolean>(true);
+  const [showOnlyUsed, setShowOnlyUsed] = useState<boolean>(false); // Changed from showUsed/showUnused, default false
   const [filterFunnyRate, setFilterFunnyRate] = useState<number>(-1);
 
   const categoryNames = useMemo(() => {
@@ -39,19 +38,19 @@ export default function Home() {
     if (!jokes) return [];
     return jokes.filter(joke => {
       const categoryMatch = selectedCategory === 'all' || joke.category === selectedCategory;
-      const usageMatch = (showUsed && joke.used) || (showUnused && !joke.used);
-      const usageFilterActive = showUsed || showUnused;
+      // If showOnlyUsed is true, only show jokes where joke.used is true.
+      // If showOnlyUsed is false, show all jokes (usageMatch is true).
+      const usageMatch = showOnlyUsed ? joke.used === true : true;
       const funnyRateMatch = filterFunnyRate === -1 || joke.funnyRate === filterFunnyRate;
 
-      return categoryMatch && (usageFilterActive ? usageMatch : true) && funnyRateMatch;
+      return categoryMatch && usageMatch && funnyRateMatch;
     });
-  }, [jokes, selectedCategory, showUsed, showUnused, filterFunnyRate]);
+  }, [jokes, selectedCategory, showOnlyUsed, filterFunnyRate]); // Updated dependencies
 
   const handleClearFilters = () => {
     setSelectedCategory('all');
     setFilterFunnyRate(-1);
-    setShowUsed(true);
-    setShowUnused(true);
+    setShowOnlyUsed(false); // Reset to default (show all)
   };
 
   // Handle overall loading state (Auth + Initial Jokes)
@@ -146,28 +145,17 @@ export default function Home() {
           </Select>
         </div>
 
-        {/* Usage Status Filters */}
-        <div className="space-y-1.5 min-w-[180px] flex-grow sm:flex-grow-0">
-          <Label>Usage Status</Label>
-          <div className="flex items-center space-x-4 pt-1">
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="show-used"
-                checked={showUsed}
-                onCheckedChange={setShowUsed}
-                aria-label="Show used jokes"
-              />
-              <Label htmlFor="show-used" className="font-normal">Used</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="show-unused"
-                checked={showUnused}
-                onCheckedChange={setShowUnused}
-                aria-label="Show unused jokes"
-              />
-              <Label htmlFor="show-unused" className="font-normal">Unused</Label>
-            </div>
+        {/* Usage Status Filter */}
+        <div className="space-y-1.5 min-w-[100px] flex-grow sm:flex-grow-0"> {/* Adjusted min-width */}
+          <Label>Usage</Label> {/* Changed group label */}
+          <div className="flex items-center space-x-2 pt-1">
+            <Switch
+              id="show-only-used"
+              checked={showOnlyUsed}
+              onCheckedChange={setShowOnlyUsed}
+              aria-label="Show only used jokes"
+            />
+            <Label htmlFor="show-only-used" className="font-normal">Used</Label> {/* Simplified label */}
           </div>
         </div>
         
@@ -176,7 +164,6 @@ export default function Home() {
         </Button>
       </div>
 
-      {/* The H2 "Your Jokes" is removed as the filter bar and table caption provide context */}
       <JokeList jokes={filteredJokes} />
 
       {/* Load More Button */}
@@ -202,3 +189,4 @@ export default function Home() {
     </div>
   );
 }
+
