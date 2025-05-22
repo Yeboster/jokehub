@@ -115,21 +115,23 @@ const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
               </Tooltip>
             </TooltipProvider>
 
-            <TooltipProvider delayDuration={300}>
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                         <Button variant="ghost" size="icon" className="h-8 w-8" asChild disabled={isRating || isTogglingUsed}>
-                            <Link href={`/edit-joke/${joke.id}`}>
-                                <Pencil className="h-4 w-4 text-muted-foreground hover:text-primary" />
-                                <span className="sr-only">Edit Joke</span>
-                            </Link>
-                        </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                        <p>Edit Joke</p>
-                    </TooltipContent>
-                </Tooltip>
-            </TooltipProvider>
+            {currentUser?.uid === joke.userId && (
+              <TooltipProvider delayDuration={300}>
+                  <Tooltip>
+                      <TooltipTrigger asChild>
+                           <Button variant="ghost" size="icon" className="h-8 w-8" asChild disabled={isRating || isTogglingUsed}>
+                              <Link href={`/edit-joke/${joke.id}`}>
+                                  <Pencil className="h-4 w-4 text-muted-foreground hover:text-primary" />
+                                  <span className="sr-only">Edit Joke</span>
+                              </Link>
+                          </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                          <p>Edit Joke</p>
+                      </TooltipContent>
+                  </Tooltip>
+              </TooltipProvider>
+            )}
           </div>
         </div>
       </CardFooter>
