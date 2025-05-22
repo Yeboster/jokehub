@@ -167,7 +167,7 @@ export default function Home() {
         <p className="mt-3 text-lg text-muted-foreground sm:text-xl">Get ready to laugh</p>
       </header>
 
-      <div className="mb-6 p-4 flex flex-wrap items-center gap-x-4 gap-y-2"> {/* Removed border-b */}
+      <div className="mb-4 p-4 flex flex-wrap items-center gap-x-4 gap-y-2"> {/* Reduced mb-6 to mb-4 */}
         <Dialog open={isFilterModalOpen} onOpenChange={(isOpen) => {
           if (!isOpen) { 
             // If modal is closed without applying, revert temp states to active filters
