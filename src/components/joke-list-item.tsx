@@ -3,7 +3,7 @@
 
 import type { FC } from 'react';
 import { format } from 'date-fns';
-import { Check, Square, Loader2, Pencil, Tag, CalendarDays, StarIcon as LucideStarIcon } from 'lucide-react';
+import { Check, Square, Loader2, Pencil, Tag, CalendarDays, UserCircle, StarIcon as LucideStarIcon } from 'lucide-react';
 import { useState } from 'react';
 import Link from 'next/link';
 
@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import StarRating from '@/components/StarRating';
 import { useJokes } from '@/contexts/JokeContext';
+import { useAuth } from '@/contexts/AuthContext'; // Import useAuth
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'; // Added Card components
 import { cn } from '@/lib/utils';
 
@@ -22,6 +23,7 @@ interface JokeListItemProps {
 
 const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
   const { rateJoke, toggleUsed } = useJokes();
+  const { user: currentUser } = useAuth(); // Get current user from AuthContext
   const [isTogglingUsed, setIsTogglingUsed] = useState(false);
   const [isRating, setIsRating] = useState(false);
 
@@ -49,9 +51,28 @@ const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
             <Tag className="h-3.5 w-3.5" />
             {joke.category}
           </Badge>
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <CalendarDays className="h-3.5 w-3.5" />
-            {format(joke.dateAdded, 'PP')}
+          <div className="flex items-center gap-x-3 gap-y-1 text-xs text-muted-foreground flex-wrap justify-end">
+            <div className="flex items-center gap-1">
+                <CalendarDays className="h-3.5 w-3.5" />
+                {format(joke.dateAdded, 'PP')}
+            </div>
+            {currentUser?.email && joke.userId === currentUser.uid && (
+              <TooltipProvider delayDuration={200}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-1 cursor-default">
+                        <UserCircle className="h-3.5 w-3.5" />
+                        <span className="truncate max-w-[100px] sm:max-w-[120px]"> 
+                            {currentUser.email}
+                        </span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Posted by: {currentUser.email}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
           </div>
         </div>
         
@@ -60,7 +81,7 @@ const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
             <StarRating
               rating={joke.funnyRate}
               onRatingChange={handleRatingChange}
-              size={18} // Adjusted size for card layout
+              size={18} 
               disabled={isRating || isTogglingUsed}
               starClassName="text-accent"
             />
