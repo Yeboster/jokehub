@@ -4,7 +4,7 @@ Avoid offensive, discriminatory, or inappropriate content.
 Focus on generating jokes that are genuinely funny and engaging for a general audience.
 Be creative and think outside the box. Surprise me with your humor!`;
 
-export const jokeGenerationPrompt = (topic?: string, prefilledJoke?: string) => {
+export const jokeGenerationPrompt = (topic?: string, prefilledJoke?: string): string => {
   let prompt = `Generate a 5-star rated joke`;
   if (topic) {
     prompt += ` about: ${topic}.`;
@@ -16,5 +16,6 @@ export const jokeGenerationPrompt = (topic?: string, prefilledJoke?: string) => 
   }
   return `${prompt}
   Make sure the joke is original and not a well-known existing joke.
-  It should be suitable for a general audience.`;
+  It should be suitable for a general audience.
+  Then find the most suiting category for the joke (e.g. Food, Business, One-liner, Situational)`;
 };
