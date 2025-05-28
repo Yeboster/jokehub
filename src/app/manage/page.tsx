@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import AddJokeForm from '@/components/add-joke-form';
+import AddJokeForm, { type JokeFormValues } from '@/components/add-joke-form'; // Import JokeFormValues
 import CSVImport from '@/components/csv-import';
 import Header from '@/components/header';
 import { useJokes } from '@/contexts/JokeContext';
@@ -40,9 +40,14 @@ export default function ManageJokesPage() {
         }
         setIsGeneratingJoke(true);
         try {
-            const result: GenerateJokeOutput = await generateJoke({ topicHint: aiTopicHint, prefilledJoke: aiGeneratedText });
+            const trimmedTopicHint = aiTopicHint?.trim();
+            // Pass the current aiGeneratedText as prefilledJoke to encourage variety if re-generating
+            const result: GenerateJokeOutput = await generateJoke({ topicHint: trimmedTopicHint, prefilledJoke: aiGeneratedText });
+            
             setAiGeneratedText(result.jokeText);
-            setAiGeneratedCategory(result.category);
+            // Trim the category from AI to ensure consistency
+            setAiGeneratedCategory(result.category ? result.category.trim() : ''); 
+
             toast({ title: 'Joke Generated!', description: 'The joke has been pre-filled in the form below.' });
         } catch (error: any) {
             console.error("Error generating joke:", error);
@@ -50,6 +55,21 @@ export default function ManageJokesPage() {
         } finally {
             setIsGeneratingJoke(false);
         }
+    };
+
+    // Callback for AddJokeForm when an AI-generated joke is submitted
+    const handleAiJokeSubmitted = () => {
+        setAiGeneratedText(undefined); // Clear AI text from state
+        setAiGeneratedCategory(undefined); // Clear AI category from state
+        // Optionally clear the topic hint as well if desired
+        // setAiTopicHint(''); 
+    };
+
+    // Wrapper for addJoke to pass to the form
+    const handleAddJokeFromForm = async (data: JokeFormValues) => {
+        await addJoke(data);
+        // No need to call handleAiJokeSubmitted here, 
+        // AddJokeForm's internal onSubmit will call its onAiJokeSubmitted prop if it was an AI joke.
     };
     
     if (authLoading || (!user && !authLoading)) {
@@ -76,9 +96,10 @@ export default function ManageJokesPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
                 <AddJokeForm 
-                    onAddJoke={addJoke} 
+                    onAddJoke={handleAddJokeFromForm} 
                     aiGeneratedText={aiGeneratedText}
                     aiGeneratedCategory={aiGeneratedCategory}
+                    onAiJokeSubmitted={handleAiJokeSubmitted} // Pass the callback
                 />
                 
                 <Card>
@@ -93,7 +114,7 @@ export default function ManageJokesPage() {
                                 id="ai-topic-hint"
                                 type="text"
                                 placeholder="e.g., animals, space, food"
-                                value={aiTopicHint}
+                                value={aiTopicHint || ''} // Ensure controlled component
                                 onChange={(e) => setAiTopicHint(e.target.value)}
                                 disabled={isGeneratingJoke || !user}
                             />
@@ -110,6 +131,11 @@ export default function ManageJokesPage() {
                             )}
                             {isGeneratingJoke ? 'Generating...' : 'Generate Joke'}
                         </Button>
+                        {aiGeneratedText && (
+                            <p className="text-xs text-muted-foreground pt-2">
+                                Tip: You can click "Generate Joke" again with the same or a different topic to get a new one. The current generated text will be used to encourage variety.
+                            </p>
+                        )}
                     </CardContent>
                 </Card>
 
