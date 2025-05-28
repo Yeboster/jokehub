@@ -343,7 +343,7 @@ export default function Home() {
               Add New Joke
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-lg">
+          <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>Add a New Joke</DialogTitle>
               <DialogDescription>
