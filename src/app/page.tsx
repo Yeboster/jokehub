@@ -350,15 +350,15 @@ export default function Home() {
                 Create a joke manually or let AI generate one for you.
               </DialogDescription>
             </DialogHeader>
-            <div className="py-4 space-y-6">
+            <div className="py-2 space-y-3"> {/* Optimized: Reduced py and space-y */}
               {/* AI Joke Generation Section */}
-              <div className="space-y-3 p-4 border rounded-md shadow-sm bg-muted/30">
-                <h3 className="text-md font-semibold flex items-center">
-                  <Wand2 className="mr-2 h-5 w-5 text-primary" />
+              <div className="space-y-2 p-3 border rounded-md shadow-sm bg-muted/30"> {/* Optimized: Reduced space-y and p */}
+                <h3 className="text-sm font-semibold flex items-center"> {/* Optimized: text-sm */}
+                  <Wand2 className="mr-2 h-4 w-4 text-primary" /> {/* Optimized: h-4 w-4 */}
                   Generate with AI
                 </h3>
                 <div>
-                  <Label htmlFor="ai-topic-hint-modal">Topic Hint (Optional)</Label>
+                  <Label htmlFor="ai-topic-hint-modal" className="text-xs">Topic Hint (Optional)</Label> {/* Optimized: text-xs */}
                   <Input 
                       id="ai-topic-hint-modal"
                       type="text"
@@ -366,7 +366,7 @@ export default function Home() {
                       value={aiTopicHint || ''}
                       onChange={(e) => setAiTopicHint(e.target.value)}
                       disabled={isGeneratingJoke || !user}
-                      className="mt-1"
+                      className="mt-1 h-9 text-sm" // Optimized: h-9, text-sm
                   />
                 </div>
                 <Button 
@@ -397,8 +397,6 @@ export default function Home() {
                   onAiJokeSubmitted={handleAiJokeSubmittedFromModal}
               />
             </div>
-             {/* DialogFooter can be omitted if AddJokeForm has its own submit/cancel that closes the modal */}
-             {/* Or, AddJokeForm's submit could call setIsAddJokeModalOpen(false) */}
           </DialogContent>
         </Dialog>
 
@@ -449,3 +447,4 @@ export default function Home() {
     
 
     
+
