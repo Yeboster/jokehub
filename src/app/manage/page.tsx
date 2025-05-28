@@ -23,9 +23,9 @@ export default function ManageJokesPage() {
     const { toast } = useToast();
 
     const [isGeneratingJoke, setIsGeneratingJoke] = useState(false);
-    const [aiTopicHint, setAiTopicHint] = useState('');
-    const [aiGeneratedText, setAiGeneratedText] = useState<string | null>(null);
-    const [aiGeneratedCategory, setAiGeneratedCategory] = useState<string | null>(null);
+    const [aiTopicHint, setAiTopicHint] = useState<string | undefined>();
+    const [aiGeneratedText, setAiGeneratedText] = useState<string | undefined>();
+    const [aiGeneratedCategory, setAiGeneratedCategory] = useState<string | undefined>();
 
     useEffect(() => {
         if (!authLoading && !user) {
@@ -39,10 +39,8 @@ export default function ManageJokesPage() {
             return;
         }
         setIsGeneratingJoke(true);
-        setAiGeneratedText(null);
-        setAiGeneratedCategory(null);
         try {
-            const result: GenerateJokeOutput = await generateJoke({ topicHint: aiTopicHint });
+            const result: GenerateJokeOutput = await generateJoke({ topicHint: aiTopicHint, prefilledJoke: aiGeneratedText });
             setAiGeneratedText(result.jokeText);
             setAiGeneratedCategory(result.category);
             toast({ title: 'Joke Generated!', description: 'The joke has been pre-filled in the form below.' });
@@ -52,12 +50,6 @@ export default function ManageJokesPage() {
         } finally {
             setIsGeneratingJoke(false);
         }
-    };
-
-    const handleAiJokeSubmitted = () => {
-        setAiGeneratedText(null);
-        setAiGeneratedCategory(null);
-        setAiTopicHint(''); // Clear topic hint as well
     };
     
     if (authLoading || (!user && !authLoading)) {
@@ -87,7 +79,6 @@ export default function ManageJokesPage() {
                     onAddJoke={addJoke} 
                     aiGeneratedText={aiGeneratedText}
                     aiGeneratedCategory={aiGeneratedCategory}
-                    onAiJokeSubmitted={handleAiJokeSubmitted}
                 />
                 
                 <Card>

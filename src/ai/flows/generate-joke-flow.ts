@@ -14,7 +14,9 @@ import { z } from 'genkit';
 
 const GenerateJokeInputSchema = z.object({
   topicHint: z.string().optional().describe('An optional topic or category hint for the joke.'),
+  prefilledJoke: z.string().optional().describe('A prefilled joke to ensure the generated joke is different.'),
 });
+
 export type GenerateJokeInput = z.infer<typeof GenerateJokeInputSchema>;
 
 const GenerateJokeOutputSchema = z.object({
@@ -34,9 +36,9 @@ const generateJokeFlow = ai.defineFlow(
     outputSchema: GenerateJokeOutputSchema,
   },
   async (input) => {
-    const prompt = jokeGenerationPrompt(input.topicHint);
+    const prompt = jokeGenerationPrompt(input.topicHint, input.prefilledJoke);
+
     const res = await ai.generate({
-      temperature: 0.8,
       prompt,
       system: systemInstruction,
       output: { schema: GenerateJokeOutputSchema }
