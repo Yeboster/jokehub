@@ -5,52 +5,60 @@ import { useState, useMemo, useEffect } from 'react';
 import type { FilterParams } from '@/contexts/JokeContext'; // Import FilterParams type
 import { useJokes } from '@/contexts/JokeContext';
 import { useAuth } from '@/contexts/AuthContext';
-// import Header from '@/components/header'; // No longer using generic header here
 import JokeList from '@/components/joke-list';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Loader2, Laugh, ChevronDown, RotateCcw, Filter as FilterIcon, Check, ChevronsUpDown, XIcon } from 'lucide-react';
+import { Loader2, Laugh, ChevronDown, RotateCcw, Filter as FilterIcon, Check, ChevronsUpDown, XIcon, PlusCircle, Wand2 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { cn } from '@/lib/utils';
+import AddJokeForm, { type JokeFormValues } from '@/components/add-joke-form';
+import { generateJoke, type GenerateJokeOutput } from '@/ai/flows/generate-joke-flow';
+import { useToast } from '@/hooks/use-toast';
 
 export default function Home() {
   const { user, loading: authLoading } = useAuth();
+  const { toast } = useToast();
   const {
     jokes,
     categories,
-    loadJokesWithFilters, // Use new function for applying filters
-    loadMoreFilteredJokes,  // Use new function for loading more
+    addJoke, // For the AddJokeForm
+    loadJokesWithFilters,
+    loadMoreFilteredJokes,
     hasMoreJokes,
     loadingInitialJokes,
     loadingMoreJokes
    } = useJokes();
 
-  // These states now represent the *active* filters applied to the list
   const [activeFilters, setActiveFilters] = useState<FilterParams>({
     selectedCategories: [],
     filterFunnyRate: -1,
     showOnlyUsed: false,
   });
 
-  // State for filter modal
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [isAddJokeModalOpen, setIsAddJokeModalOpen] = useState(false);
   const [isCategoryPopoverOpen, setIsCategoryPopoverOpen] = useState(false);
 
-  // Temporary states for modal selections, initialized from activeFilters
   const [tempSelectedCategories, setTempSelectedCategories] = useState<string[]>(activeFilters.selectedCategories);
   const [tempFilterFunnyRate, setTempFilterFunnyRate] = useState<number>(activeFilters.filterFunnyRate);
   const [tempShowOnlyUsed, setTempShowOnlyUsed] = useState<boolean>(activeFilters.showOnlyUsed);
   const [categorySearch, setCategorySearch] = useState('');
 
+  // State for AI Joke Generation within the modal
+  const [isGeneratingJoke, setIsGeneratingJoke] = useState(false);
+  const [aiTopicHint, setAiTopicHint] = useState<string | undefined>();
+  const [aiGeneratedText, setAiGeneratedText] = useState<string | undefined>();
+  const [aiGeneratedCategory, setAiGeneratedCategory] = useState<string | undefined>();
+
+
   useEffect(() => {
-    // When activeFilters change (e.g. on apply or clear), re-initialize temp states for the modal
-    // This ensures the modal opens with the currently active filters
     setTempSelectedCategories([...activeFilters.selectedCategories]);
     setTempFilterFunnyRate(activeFilters.filterFunnyRate);
     setTempShowOnlyUsed(activeFilters.showOnlyUsed);
@@ -62,14 +70,10 @@ export default function Home() {
     return categories.map(cat => cat.name).sort();
   }, [categories]);
 
-  // The `filteredJokes` logic is now primarily handled by JokeContext fetching.
-  // This useMemo simply returns the jokes received from the context.
-  // The context itself ensures these jokes are already filtered.
   const jokesToDisplay = useMemo(() => jokes ?? [], [jokes]);
 
 
   const handleOpenFilterModal = () => {
-    // Initialize temporary states with current active filters from `activeFilters` state
     setTempSelectedCategories([...activeFilters.selectedCategories]);
     setTempFilterFunnyRate(activeFilters.filterFunnyRate);
     setTempShowOnlyUsed(activeFilters.showOnlyUsed);
@@ -83,8 +87,8 @@ export default function Home() {
       filterFunnyRate: tempFilterFunnyRate,
       showOnlyUsed: tempShowOnlyUsed,
     };
-    setActiveFilters(newFilters); // Update active filters state
-    loadJokesWithFilters(newFilters); // Tell context to fetch with these filters
+    setActiveFilters(newFilters);
+    loadJokesWithFilters(newFilters);
     setIsFilterModalOpen(false);
   };
 
@@ -94,13 +98,12 @@ export default function Home() {
       filterFunnyRate: -1,
       showOnlyUsed: false,
     };
-    setActiveFilters(defaultFilters); // Reset active filters state
-    setTempSelectedCategories([]); // Reset temp modal states as well
+    setActiveFilters(defaultFilters);
+    setTempSelectedCategories([]);
     setTempFilterFunnyRate(-1);
     setTempShowOnlyUsed(false);
     setCategorySearch('');
-    loadJokesWithFilters(defaultFilters); // Tell context to fetch with default filters
-    // Modal will close automatically if open due to onOpenChange, or remain closed
+    loadJokesWithFilters(defaultFilters);
   };
   
   const getFunnyRateLabel = (rate: number): string => {
@@ -126,6 +129,44 @@ export default function Home() {
   }, [categoryNames, categorySearch]);
 
   const hasActiveAppliedFilters = activeFilters.selectedCategories.length > 0 || activeFilters.filterFunnyRate !== -1 || activeFilters.showOnlyUsed;
+
+  // --- AI Joke Generation Logic (moved from manage page) ---
+  const handleGenerateJokeInModal = async () => {
+    if (!user) {
+      toast({ title: 'Authentication Required', description: 'Please log in to generate jokes.', variant: 'destructive' });
+      return;
+    }
+    setIsGeneratingJoke(true);
+    try {
+      const trimmedTopicHint = aiTopicHint?.trim();
+      const result: GenerateJokeOutput = await generateJoke({ topicHint: trimmedTopicHint, prefilledJoke: aiGeneratedText });
+      
+      setAiGeneratedText(result.jokeText);
+      setAiGeneratedCategory(result.category ? result.category.trim() : ''); 
+
+      toast({ title: 'Joke Generated!', description: 'The joke has been pre-filled in the form below.' });
+    } catch (error: any) {
+      console.error("Error generating joke:", error);
+      toast({ title: 'AI Error', description: error.message || 'Failed to generate joke.', variant: 'destructive' });
+    } finally {
+      setIsGeneratingJoke(false);
+    }
+  };
+
+  const handleAiJokeSubmittedFromModal = () => {
+    setAiGeneratedText(undefined);
+    setAiGeneratedCategory(undefined);
+    // setAiTopicHint(''); // Optionally clear topic hint
+  };
+
+  const handleAddJokeFromFormInModal = async (data: JokeFormValues) => {
+    await addJoke(data); // Call context's addJoke
+    // AddJokeForm's internal onSubmit will call its onAiJokeSubmitted prop if it was an AI joke.
+    // This might trigger handleAiJokeSubmittedFromModal if wired up correctly.
+    // After successful submission, close the modal.
+    setIsAddJokeModalOpen(false); 
+  };
+
 
   if (authLoading || (!user && !authLoading)) {
     return (
@@ -162,15 +203,15 @@ export default function Home() {
 
   return (
     <div className="container mx-auto p-4 md:p-8">
-      <header className="mb-8 text-center"> {/* Hero Title Section */}
+      <header className="mb-8 text-center">
         <h1 className="text-4xl font-bold tracking-tight text-primary sm:text-5xl">Jokes</h1>
         <p className="mt-3 text-lg text-muted-foreground sm:text-xl">Get ready to laugh</p>
       </header>
 
-      <div className="mb-4 p-4 flex flex-wrap items-center gap-x-4 gap-y-2"> {/* Reduced mb-6 to mb-4 */}
+      <div className="mb-4 p-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+        {/* Filter Button */}
         <Dialog open={isFilterModalOpen} onOpenChange={(isOpen) => {
           if (!isOpen) { 
-            // If modal is closed without applying, revert temp states to active filters
             setTempSelectedCategories([...activeFilters.selectedCategories]);
             setTempFilterFunnyRate(activeFilters.filterFunnyRate);
             setTempShowOnlyUsed(activeFilters.showOnlyUsed);
@@ -178,7 +219,7 @@ export default function Home() {
           setIsFilterModalOpen(isOpen);
         }}>
           <DialogTrigger asChild>
-            <Button variant="outline" size="sm" onClick={handleOpenFilterModal}> {/* Made button smaller */}
+            <Button variant="outline" size="sm" onClick={handleOpenFilterModal}>
               <FilterIcon className="mr-2 h-4 w-4" />
               Filters
               {hasActiveAppliedFilters && <span className="ml-2 h-2 w-2 rounded-full bg-primary" />}
@@ -254,7 +295,6 @@ export default function Home() {
                   </PopoverContent>
                 </Popover>
               </div>
-
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="modal-funny-rate-filter" className="text-right">Rating</Label>
                 <Select
@@ -275,7 +315,6 @@ export default function Home() {
                   </SelectContent>
                 </Select>
               </div>
-
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="modal-show-only-used" className="text-right">Usage</Label>
                 <div className="col-span-3 flex items-center space-x-2">
@@ -296,6 +335,74 @@ export default function Home() {
           </DialogContent>
         </Dialog>
 
+        {/* Add New Joke Button & Modal */}
+        <Dialog open={isAddJokeModalOpen} onOpenChange={setIsAddJokeModalOpen}>
+          <DialogTrigger asChild>
+            <Button variant="outline" size="sm">
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Add New Joke
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Add a New Joke</DialogTitle>
+              <DialogDescription>
+                Create a joke manually or let AI generate one for you.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4 space-y-6">
+              {/* AI Joke Generation Section */}
+              <div className="space-y-3 p-4 border rounded-md shadow-sm bg-muted/30">
+                <h3 className="text-md font-semibold flex items-center">
+                  <Wand2 className="mr-2 h-5 w-5 text-primary" />
+                  Generate with AI
+                </h3>
+                <div>
+                  <Label htmlFor="ai-topic-hint-modal">Topic Hint (Optional)</Label>
+                  <Input 
+                      id="ai-topic-hint-modal"
+                      type="text"
+                      placeholder="e.g., animals, space, food"
+                      value={aiTopicHint || ''}
+                      onChange={(e) => setAiTopicHint(e.target.value)}
+                      disabled={isGeneratingJoke || !user}
+                      className="mt-1"
+                  />
+                </div>
+                <Button 
+                    onClick={handleGenerateJokeInModal} 
+                    disabled={isGeneratingJoke || !user} 
+                    className="w-full"
+                    size="sm"
+                >
+                  {isGeneratingJoke ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                      <Wand2 className="mr-2 h-4 w-4" />
+                  )}
+                  {isGeneratingJoke ? 'Generating...' : (aiGeneratedText ? 'Generate Another' : 'Generate Joke')}
+                </Button>
+                 {aiGeneratedText && (
+                  <p className="text-xs text-muted-foreground pt-1">
+                    Tip: Click generate again to get a new one. The current generated text will be used to encourage variety.
+                  </p>
+                )}
+              </div>
+
+              {/* AddJokeForm */}
+              <AddJokeForm 
+                  onAddJoke={handleAddJokeFromFormInModal} 
+                  aiGeneratedText={aiGeneratedText}
+                  aiGeneratedCategory={aiGeneratedCategory}
+                  onAiJokeSubmitted={handleAiJokeSubmittedFromModal}
+              />
+            </div>
+             {/* DialogFooter can be omitted if AddJokeForm has its own submit/cancel that closes the modal */}
+             {/* Or, AddJokeForm's submit could call setIsAddJokeModalOpen(false) */}
+          </DialogContent>
+        </Dialog>
+
+        {/* Active Filter Chips */}
         <div className="flex flex-wrap items-center gap-2 flex-grow min-h-[36px]">
           {activeFilters.selectedCategories.map(category => (
              <Badge key={category} variant="secondary" className="py-1 px-2">Category: {category}</Badge>
@@ -320,7 +427,7 @@ export default function Home() {
       <div className="mt-8 text-center">
         {hasMoreJokes ? (
           <Button
-            onClick={loadMoreFilteredJokes} // Use the new context function
+            onClick={loadMoreFilteredJokes}
             disabled={loadingMoreJokes}
             variant="outline"
             size="lg"
@@ -333,11 +440,12 @@ export default function Home() {
             {loadingMoreJokes ? 'Loading...' : 'Load More Jokes'}
           </Button>
         ) : (
-          // Message if jokes are present but no more to load
           jokesToDisplay.length > 0 && !loadingInitialJokes && <p className="text-muted-foreground">No more jokes to load for the current filters.</p>
         )}
       </div>
     </div>
   );
 }
+    
+
     
