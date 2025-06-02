@@ -17,6 +17,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { ScrollArea } from '@/components/ui/scroll-area'; // Import ScrollArea
 import { cn } from '@/lib/utils';
 import AddJokeForm, { type JokeFormValues } from '@/components/add-joke-form';
 import { generateJoke, type GenerateJokeOutput } from '@/ai/flows/generate-joke-flow';
@@ -350,53 +351,55 @@ export default function Home() {
                 Create a joke manually or let AI generate one for you.
               </DialogDescription>
             </DialogHeader>
-            <div className="py-2 space-y-3"> {/* Optimized: Reduced py and space-y */}
-              {/* AI Joke Generation Section */}
-              <div className="space-y-2 p-3 border rounded-md shadow-sm bg-muted/30"> {/* Optimized: Reduced space-y and p */}
-                <h3 className="text-sm font-semibold flex items-center"> {/* Optimized: text-sm */}
-                  <Wand2 className="mr-2 h-4 w-4 text-primary" /> {/* Optimized: h-4 w-4 */}
-                  Generate with AI
-                </h3>
-                <div>
-                  <Label htmlFor="ai-topic-hint-modal" className="text-xs">Topic Hint (Optional)</Label> {/* Optimized: text-xs */}
-                  <Input 
-                      id="ai-topic-hint-modal"
-                      type="text"
-                      placeholder="e.g., animals, space, food"
-                      value={aiTopicHint || ''}
-                      onChange={(e) => setAiTopicHint(e.target.value)}
-                      disabled={isGeneratingJoke || !user}
-                      className="mt-1 h-9 text-sm" // Optimized: h-9, text-sm
-                  />
-                </div>
-                <Button 
-                    onClick={handleGenerateJokeInModal} 
-                    disabled={isGeneratingJoke || !user} 
-                    className="w-full"
-                    size="sm"
-                >
-                  {isGeneratingJoke ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                      <Wand2 className="mr-2 h-4 w-4" />
+            <ScrollArea className="max-h-[calc(80vh-120px)] md:max-h-[70vh] pr-3">
+              <div className="py-2 space-y-3"> {/* Optimized: Reduced py and space-y */}
+                {/* AI Joke Generation Section */}
+                <div className="space-y-2 p-3 border rounded-md shadow-sm bg-muted/30"> {/* Optimized: Reduced space-y and p */}
+                  <h3 className="text-sm font-semibold flex items-center"> {/* Optimized: text-sm */}
+                    <Wand2 className="mr-2 h-4 w-4 text-primary" /> {/* Optimized: h-4 w-4 */}
+                    Generate with AI
+                  </h3>
+                  <div>
+                    <Label htmlFor="ai-topic-hint-modal" className="text-xs">Topic Hint (Optional)</Label> {/* Optimized: text-xs */}
+                    <Input 
+                        id="ai-topic-hint-modal"
+                        type="text"
+                        placeholder="e.g., animals, space, food"
+                        value={aiTopicHint || ''}
+                        onChange={(e) => setAiTopicHint(e.target.value)}
+                        disabled={isGeneratingJoke || !user}
+                        className="mt-1 h-9 text-sm" // Optimized: h-9, text-sm
+                    />
+                  </div>
+                  <Button 
+                      onClick={handleGenerateJokeInModal} 
+                      disabled={isGeneratingJoke || !user} 
+                      className="w-full"
+                      size="sm"
+                  >
+                    {isGeneratingJoke ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                        <Wand2 className="mr-2 h-4 w-4" />
+                    )}
+                    {isGeneratingJoke ? 'Generating...' : (aiGeneratedText ? 'Generate Another' : 'Generate Joke')}
+                  </Button>
+                   {aiGeneratedText && (
+                    <p className="text-xs text-muted-foreground pt-1">
+                      Tip: Click generate again to get a new one. The current generated text will be used to encourage variety.
+                    </p>
                   )}
-                  {isGeneratingJoke ? 'Generating...' : (aiGeneratedText ? 'Generate Another' : 'Generate Joke')}
-                </Button>
-                 {aiGeneratedText && (
-                  <p className="text-xs text-muted-foreground pt-1">
-                    Tip: Click generate again to get a new one. The current generated text will be used to encourage variety.
-                  </p>
-                )}
-              </div>
+                </div>
 
-              {/* AddJokeForm */}
-              <AddJokeForm 
-                  onAddJoke={handleAddJokeFromFormInModal} 
-                  aiGeneratedText={aiGeneratedText}
-                  aiGeneratedCategory={aiGeneratedCategory}
-                  onAiJokeSubmitted={handleAiJokeSubmittedFromModal}
-              />
-            </div>
+                {/* AddJokeForm */}
+                <AddJokeForm 
+                    onAddJoke={handleAddJokeFromFormInModal} 
+                    aiGeneratedText={aiGeneratedText}
+                    aiGeneratedCategory={aiGeneratedCategory}
+                    onAiJokeSubmitted={handleAiJokeSubmittedFromModal}
+                />
+              </div>
+            </ScrollArea>
           </DialogContent>
         </Dialog>
 
@@ -448,3 +451,6 @@ export default function Home() {
 
     
 
+
+
+    
