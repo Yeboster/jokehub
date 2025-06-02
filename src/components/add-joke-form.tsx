@@ -61,14 +61,14 @@ const AddJokeForm: FC<AddJokeFormProps> = ({ onAddJoke, aiGeneratedText, aiGener
   useEffect(() => {
     if (aiGeneratedText) {
       form.setValue('text', aiGeneratedText, { shouldValidate: true });
-    } else if (aiGeneratedText === null) { // Explicitly null means clear it
+    } else if (aiGeneratedText === null) { 
         form.setValue('text', '', { shouldValidate: true });
     }
 
     if (aiGeneratedCategory) {
       form.setValue('category', aiGeneratedCategory, { shouldValidate: true });
       setCategorySearch(aiGeneratedCategory); 
-    } else if (aiGeneratedCategory === null) { // Explicitly null means clear it
+    } else if (aiGeneratedCategory === null) { 
         form.setValue('category', '', { shouldValidate: true });
         setCategorySearch('');
     }
@@ -84,7 +84,7 @@ const AddJokeForm: FC<AddJokeFormProps> = ({ onAddJoke, aiGeneratedText, aiGener
       await onAddJoke(data);
       form.reset();
       setCategorySearch('');
-      if (aiGeneratedText && onAiJokeSubmitted) { // Check if it was an AI joke
+      if (aiGeneratedText && onAiJokeSubmitted) { 
         onAiJokeSubmitted();
       }
     } catch (error) {
@@ -117,28 +117,28 @@ const AddJokeForm: FC<AddJokeFormProps> = ({ onAddJoke, aiGeneratedText, aiGener
 
   return (
     <Card>
-      <CardHeader className="p-4"> {/* Optimized: Reduced padding */}
-        <CardTitle className="text-lg">Add a New Joke</CardTitle> {/* Optimized: Reduced font size */}
+      <CardHeader className="p-4 pt-3"> 
+        <CardTitle className="text-base">Add a New Joke</CardTitle> 
       </CardHeader>
-      <CardContent className="p-4 pt-0"> {/* Optimized: Reduced padding */}
+      <CardContent className="p-4 pt-0"> 
         {!user && (
-          <div className="mb-4 p-3 rounded-md bg-yellow-50 border border-yellow-200 text-yellow-700 flex items-center">
-            <ShieldAlert className="mr-2 h-5 w-5" />
+          <div className="mb-3 p-2.5 rounded-md bg-yellow-50 border border-yellow-200 text-yellow-700 flex items-center text-sm">
+            <ShieldAlert className="mr-2 h-4 w-4 flex-shrink-0" />
             <div>
-              Please <Link href="/auth?redirect=/manage" className="font-semibold underline hover:text-yellow-800">log in or sign up</Link> to add jokes.
+              Please <Link href="/auth?redirect=/" className="font-semibold underline hover:text-yellow-800">log in or sign up</Link> to add jokes.
             </div>
           </div>
         )}
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3"> {/* Optimized: Reduced space-y */}
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-2.5"> 
             <FormField
               control={form.control}
               name="text"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm">Joke Text</FormLabel> {/* Optimized: text-sm */}
+                  <FormLabel className="text-xs">Joke Text</FormLabel> 
                   <FormControl>
-                    <Textarea placeholder="Enter the joke text..." {...field} disabled={isFormDisabled} rows={3} className="text-sm" /> {/* Optimized: rows={3}, text-sm */}
+                    <Textarea placeholder="Enter the joke text..." {...field} disabled={isFormDisabled} rows={3} className="text-sm h-auto" /> 
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -149,7 +149,7 @@ const AddJokeForm: FC<AddJokeFormProps> = ({ onAddJoke, aiGeneratedText, aiGener
               name="category"
               render={({ field }) => (
                  <FormItem className="flex flex-col">
-                    <FormLabel className="text-sm">Category</FormLabel> {/* Optimized: text-sm */}
+                    <FormLabel className="text-xs">Category</FormLabel> 
                      <Popover open={isCategoryPopoverOpen} onOpenChange={setCategoryPopoverOpen}>
                         <PopoverTrigger asChild>
                          <FormControl>
@@ -157,16 +157,18 @@ const AddJokeForm: FC<AddJokeFormProps> = ({ onAddJoke, aiGeneratedText, aiGener
                               variant="outline"
                               role="combobox"
                               aria-expanded={isCategoryPopoverOpen}
-                              className={cn("w-full justify-between text-sm h-9", !field.value && "text-muted-foreground")} // Optimized: text-sm, h-9
+                              className={cn("w-full justify-between text-sm h-9", !field.value && "text-muted-foreground")} 
                               disabled={isFormDisabled || loadingCategories}
                             >
-                              {loadingCategories
-                               ? "Loading categories..."
-                               : field.value
-                                 ? categoryNames.find(
-                                     (name) => name.toLowerCase() === field.value.toLowerCase()
-                                   ) || field.value 
-                                 : "Select or type category..."}
+                              <span className="truncate">
+                                {loadingCategories
+                                  ? "Loading categories..."
+                                  : field.value
+                                    ? categoryNames.find(
+                                        (name) => name.toLowerCase() === field.value.toLowerCase()
+                                      ) || field.value 
+                                    : "Select or type category..."}
+                              </span>
                               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </Button>
                           </FormControl>
@@ -177,7 +179,7 @@ const AddJokeForm: FC<AddJokeFormProps> = ({ onAddJoke, aiGeneratedText, aiGener
                                 placeholder="Search or create category..."
                                 value={categorySearch}
                                 onValueChange={setCategorySearch}
-                                className="h-9" // Ensure input height consistency
+                                className="h-9" 
                             />
                              <CommandList>
                                 <CommandEmpty>
@@ -219,14 +221,14 @@ const AddJokeForm: FC<AddJokeFormProps> = ({ onAddJoke, aiGeneratedText, aiGener
               name="funnyRate"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm">Funny Rate</FormLabel> {/* Optimized: text-sm */}
+                  <FormLabel className="text-xs">Funny Rate</FormLabel> 
                   <Select
                     onValueChange={(value) => field.onChange(parseInt(value, 10))}
                     value={field.value?.toString() ?? "0"}
                     disabled={isFormDisabled}
                   >
                     <FormControl>
-                      <SelectTrigger className="text-sm h-9"> {/* Optimized: text-sm, h-9 */}
+                      <SelectTrigger className="text-sm h-9"> 
                         <SelectValue placeholder="Select a rating" />
                       </SelectTrigger>
                     </FormControl>
