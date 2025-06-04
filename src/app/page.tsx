@@ -20,7 +20,8 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { ScrollArea } from '@/components/ui/scroll-area'; // Import ScrollArea
 import { cn } from '@/lib/utils';
 import AddJokeForm, { type JokeFormValues } from '@/components/add-joke-form';
-import { generateJoke, type GenerateJokeOutput } from '@/ai/flows/generate-joke-flow';
+// Removed direct import of generateJoke flow
+import type { GenerateJokeOutput } from '@/ai/flows/generate-joke-flow'; // Only type import needed
 import { useToast } from '@/hooks/use-toast';
 
 export default function Home() {
@@ -140,14 +141,35 @@ export default function Home() {
     setIsGeneratingJoke(true);
     try {
       const trimmedTopicHint = aiTopicHint?.trim();
-      const result: GenerateJokeOutput = await generateJoke({ topicHint: trimmedTopicHint, prefilledJoke: aiGeneratedText });
+      
+      const response = await fetch('/api/generate-joke', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ topicHint: trimmedTopicHint, prefilledJoke: aiGeneratedText }),
+      });
+
+      if (!response.ok) {
+        // Attempt to parse error response, otherwise throw a generic error
+        let errorData;
+        try {
+            errorData = await response.json();
+        } catch (e) {
+            // If parsing fails, use status text or a generic message
+            throw new Error(response.statusText || `API request failed with status ${response.status}`);
+        }
+        throw new Error(errorData?.error || `API request failed with status ${response.status}`);
+      }
+
+      const result: GenerateJokeOutput = await response.json();
       
       setAiGeneratedText(result.jokeText);
       setAiGeneratedCategory(result.category ? result.category.trim() : ''); 
 
       toast({ title: 'Joke Generated!', description: 'The joke has been pre-filled in the form below.' });
     } catch (error: any) {
-      console.error("Error generating joke:", error);
+      console.error("Error generating joke via API:", error);
       toast({ title: 'AI Error', description: error.message || 'Failed to generate joke.', variant: 'destructive' });
     } finally {
       setIsGeneratingJoke(false);
