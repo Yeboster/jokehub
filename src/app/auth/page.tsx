@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, type FormEvent, useEffect } from 'react';
+import { useState, type FormEvent, useEffect, Suspense } from 'react'; // Added Suspense
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -11,14 +11,14 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 
-export default function AuthPage() {
+function AuthPageComponent() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLogin, setIsLogin] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const { signIn, signUp, user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const searchParams = useSearchParams(); // This hook necessitates Suspense
   const { toast } = useToast();
 
   const redirectPath = searchParams.get('redirect') || '/';
@@ -74,8 +74,6 @@ export default function AuthPage() {
     );
   }
   
-  // If user becomes available while on this page (e.g. due to state persistence), useEffect will redirect.
-  // We avoid rendering the form if user is already known to prevent flash.
   if (user) {
      return (
       <div className="flex justify-center items-center min-h-[calc(100vh-8rem)]">
@@ -84,7 +82,6 @@ export default function AuthPage() {
       </div>
     );
   }
-
 
   return (
     <div className="container mx-auto flex justify-center items-center py-12 px-4">
@@ -137,5 +134,18 @@ export default function AuthPage() {
         </CardFooter>
       </Card>
     </div>
+  );
+}
+
+export default function AuthPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex justify-center items-center min-h-[calc(100vh-8rem)]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="ml-2 text-muted-foreground">Loading page content...</p>
+      </div>
+    }>
+      <AuthPageComponent />
+    </Suspense>
   );
 }
