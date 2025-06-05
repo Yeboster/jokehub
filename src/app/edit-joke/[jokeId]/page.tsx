@@ -13,7 +13,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useJokes } from '@/contexts/JokeContext';
 import Header from '@/components/header';
 import { Button } from '@/components/ui/button';
-// import { Input } from '@/components/ui/input'; // Replaced with Combobox-related components
 import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -32,7 +31,6 @@ import { cn } from '@/lib/utils';
 
 const editJokeFormSchema = z.object({
   text: z.string().min(1, 'Joke text cannot be empty.'),
-  // Ensure category is trimmed and validated
   category: z.string().trim().min(1, 'Category cannot be empty. Type a new one or select from suggestions.'),
   funnyRate: z.coerce.number().min(0).max(5).optional().default(0),
 });
@@ -44,7 +42,6 @@ export default function EditJokePage() {
   const router = useRouter();
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
-  // Use getJokeById, updateJoke, and get categories/loading state from JokeContext
   const { getJokeById, updateJoke, categories, loadingInitialJokes: loadingCategories } = useJokes();
   const [joke, setJoke] = useState<Joke | null>(null);
   const [loadingJokeData, setLoadingJokeData] = useState(true);
@@ -57,35 +54,38 @@ export default function EditJokePage() {
 
   const form = useForm<EditJokeFormValues>({
     resolver: zodResolver(editJokeFormSchema),
-    defaultValues: {
-      text: '',
-      category: '',
-      funnyRate: 0,
-    },
+    defaultValues: { text: '', category: '', funnyRate: 0 },
   });
 
-  // Fetch joke data when component mounts or jokeId/user changes
   useEffect(() => {
-    async function fetchJoke() {
+    async function fetchJokeAndCheckOwnership() {
       if (!jokeId || !user) {
         setLoadingJokeData(false);
+        if (!user && !authLoading) router.push(`/auth?redirect=/edit-joke/${jokeId}`);
         return;
       }
       setLoadingJokeData(true);
       setFetchError(null);
       try {
-        const fetchedJoke = await getJokeById(jokeId);
+        const fetchedJoke = await getJokeById(jokeId); // getJokeById is now public
         if (fetchedJoke) {
-          setJoke(fetchedJoke);
-          form.reset({ // Populate form with fetched data
-            text: fetchedJoke.text,
-            category: fetchedJoke.category,
-            funnyRate: fetchedJoke.funnyRate,
-          });
-           setCategorySearch(fetchedJoke.category); // Initialize search with current category
+          if (fetchedJoke.userId !== user.uid) { // Explicit ownership check
+            setFetchError('You do not have permission to edit this joke.');
+            toast({ title: 'Access Denied', description: 'You can only edit your own jokes.', variant: 'destructive' });
+            setJoke(null);
+            // Consider redirecting: router.push('/my-jokes'); 
+          } else {
+            setJoke(fetchedJoke);
+            form.reset({
+              text: fetchedJoke.text,
+              category: fetchedJoke.category,
+              funnyRate: fetchedJoke.funnyRate,
+            });
+            setCategorySearch(fetchedJoke.category);
+          }
         } else {
-           setFetchError('Joke not found or you do not have permission to edit it.');
-           toast({ title: 'Error', description: 'Joke not found or permission denied.', variant: 'destructive' });
+           setFetchError('Joke not found.');
+           toast({ title: 'Error', description: 'Joke not found.', variant: 'destructive' });
         }
       } catch (error) {
         console.error('Error fetching joke for editing:', error);
@@ -96,33 +96,35 @@ export default function EditJokePage() {
       }
     }
 
-    if (!authLoading) { // Only fetch when auth state is resolved
+    if (!authLoading) {
          if (!user) {
              router.push(`/auth?redirect=/edit-joke/${jokeId}`);
          } else {
-            fetchJoke();
+            fetchJokeAndCheckOwnership();
          }
     }
   }, [jokeId, user, authLoading, getJokeById, form, router, toast]);
 
   const onSubmit: SubmitHandler<EditJokeFormValues> = async (data) => {
-    if (!user || !joke) return;
+    if (!user || !joke || joke.userId !== user.uid) { // Re-check ownership before submit
+        toast({ title: 'Error', description: 'Cannot update joke. Please try again.', variant: 'destructive'});
+        return;
+    }
 
      if (data.text === joke.text && data.category === joke.category && data.funnyRate === joke.funnyRate) {
          toast({ title: 'No Changes', description: 'No changes were made to the joke.' });
-         router.push('/jokes'); // Updated redirect
+         router.push('/my-jokes'); // Redirect to user's jokes
          return;
      }
 
     setIsSubmitting(true);
     try {
-      // The category name is already trimmed by the schema validation
-      await updateJoke(joke.id, data); // updateJoke handles category creation via _ensureCategoryExistsAndAdd
+      await updateJoke(joke.id, data); 
       toast({ title: 'Success', description: 'Joke updated successfully!' });
-      router.push('/jokes'); // Updated redirect
+      router.push('/my-jokes'); // Redirect to user's jokes
     } catch (error) {
       console.error("Failed to update joke:", error);
-       if (!(error instanceof Error && error.message.includes("Category"))) {
+       if (!(error instanceof Error && (error.message.includes("Category") || error.message.includes("permission denied")))) {
            toast({ title: 'Update Error', description: 'Failed to update joke.', variant: 'destructive' });
        }
     } finally {
@@ -130,11 +132,13 @@ export default function EditJokePage() {
     }
   };
 
-  // Disable form if loading auth, joke data, categories, submitting, not logged in, or error occurred
-  const isFormDisabled = authLoading || loadingJokeData || loadingCategories || isSubmitting || !user || !!fetchError;
+  const isFormDisabled = authLoading || loadingJokeData || loadingCategories || isSubmitting || !user || !!fetchError || (joke && joke.userId !== user?.uid);
+  
+  // For category dropdown, show categories relevant to the user or all if that's preferred.
+  // For editing their own joke, it's fine to show all categories as they might re-categorize.
   const categoryNames = useMemo(() => Array.isArray(categories) ? categories.map(cat => cat.name).sort() : [], [categories]);
 
-   // Filtered options for Combobox, including the "Add new" option
+
    const categoryOptions = useMemo(() => {
     let filtered = categoryNames;
     if (categorySearch) {
@@ -142,63 +146,58 @@ export default function EditJokePage() {
             name.toLowerCase().includes(categorySearch.toLowerCase())
         );
     }
-
     const options = filtered.map(name => ({ value: name, label: name }));
-
-    // Add "Create" option if the search term doesn't exactly match an existing category (case-insensitive)
     const searchTermTrimmed = categorySearch.trim();
     const exactMatchFound = categoryNames.some(name => name.toLowerCase() === searchTermTrimmed.toLowerCase());
 
     if (searchTermTrimmed && !exactMatchFound) {
       options.unshift({ value: searchTermTrimmed, label: `Create "${searchTermTrimmed}"` });
     }
-
     return options;
   }, [categoryNames, categorySearch]);
 
-
-  // --- Loading States ---
-  if (authLoading) {
+  if (authLoading) { /* ... loading UI ... */ 
       return (
         <div className="container mx-auto p-4 md:p-8 flex justify-center items-center min-h-[calc(100vh-8rem)]">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="ml-2 text-muted-foreground">Verifying authentication...</p>
+          <Loader2 className="h-8 w-8 animate-spin text-primary" /> <p className="ml-2 text-muted-foreground">Verifying...</p>
         </div>
       );
   }
-   if (loadingJokeData) {
+   if (loadingJokeData || loadingCategories) { /* ... loading UI ... */ 
     return (
       <div className="container mx-auto p-4 md:p-8 flex justify-center items-center min-h-[calc(100vh-8rem)]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-         <p className="ml-2 text-muted-foreground">Loading joke data...</p>
+         <p className="ml-2 text-muted-foreground">Loading data...</p>
       </div>
     );
-  }
-   // Show loading indicator while categories are loading
-   if (loadingCategories) {
-     return (
-      <div className="container mx-auto p-4 md:p-8 flex justify-center items-center min-h-[calc(100vh-8rem)]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-         <p className="ml-2 text-muted-foreground">Loading categories...</p>
-      </div>
-     );
    }
 
-   // --- Error State ---
-    if (fetchError) {
+    if (fetchError) { /* ... error UI ... */ 
         return (
             <div className="container mx-auto p-4 md:p-8">
                  <Header title="Edit Joke" />
                  <Card className="max-w-2xl mx-auto">
-                    <CardHeader>
-                        <CardTitle className="text-destructive">Error Loading Joke</CardTitle>
-                    </CardHeader>
+                    <CardHeader> <CardTitle className="text-destructive">Error</CardTitle> </CardHeader>
                     <CardContent>
                         <div className="mb-4 p-3 rounded-md bg-destructive/10 border border-destructive/30 text-destructive flex items-center">
-                             <ShieldAlert className="mr-2 h-5 w-5 flex-shrink-0" />
-                             <p>{fetchError}</p>
+                             <ShieldAlert className="mr-2 h-5 w-5 flex-shrink-0" /> <p>{fetchError}</p>
                         </div>
-                        <Button variant="outline" onClick={() => router.push('/jokes')}> {/* Updated redirect */}
+                        <Button variant="outline" onClick={() => router.push(user ? '/my-jokes' : '/jokes')}>
+                            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Jokes
+                        </Button>
+                    </CardContent>
+                 </Card>
+            </div>
+        );
+    }
+    if (!joke) { // If joke is null after loading and no error (e.g. access denied without throwing to fetchError)
+         return (
+            <div className="container mx-auto p-4 md:p-8">
+                 <Header title="Edit Joke" />
+                 <Card className="max-w-2xl mx-auto"> <CardHeader><CardTitle>Joke Not Editable</CardTitle></CardHeader>
+                    <CardContent>
+                        <p className="text-muted-foreground mb-4">This joke cannot be edited or was not found.</p>
+                        <Button variant="outline" onClick={() => router.push(user ? '/my-jokes' : '/jokes')}>
                             <ArrowLeft className="mr-2 h-4 w-4" /> Back to Jokes
                         </Button>
                     </CardContent>
@@ -207,11 +206,10 @@ export default function EditJokePage() {
         );
     }
 
-  // --- Main Form ---
+
   return (
     <div className="container mx-auto p-4 md:p-8">
       <Header title="Edit Your Joke" />
-
       <Card className="max-w-2xl mx-auto">
         <CardHeader>
           <CardTitle>Update Joke Details</CardTitle>
@@ -220,78 +218,34 @@ export default function EditJokePage() {
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <FormField
-                control={form.control}
-                name="text"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Joke Text</FormLabel>
-                    <FormControl>
+              <FormField control={form.control} name="text" render={({ field }) => (
+                  <FormItem> <FormLabel>Joke Text</FormLabel> <FormControl>
                       <Textarea placeholder="Enter the joke text..." {...field} disabled={isFormDisabled} rows={5} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="category"
-                 render={({ field }) => (
-                 <FormItem className="flex flex-col">
-                    <FormLabel>Category</FormLabel>
+                  </FormControl> <FormMessage /> </FormItem>
+              )} />
+              <FormField control={form.control} name="category" render={({ field }) => (
+                 <FormItem className="flex flex-col"> <FormLabel>Category</FormLabel>
                      <Popover open={isCategoryPopoverOpen} onOpenChange={setCategoryPopoverOpen}>
-                        <PopoverTrigger asChild>
-                         <FormControl>
-                            <Button
-                              variant="outline"
-                              role="combobox"
-                              aria-expanded={isCategoryPopoverOpen}
+                        <PopoverTrigger asChild> <FormControl>
+                            <Button variant="outline" role="combobox" aria-expanded={isCategoryPopoverOpen}
                               className={cn("w-full justify-between", !field.value && "text-muted-foreground")}
-                              disabled={isFormDisabled || loadingCategories}
-                            >
+                              disabled={isFormDisabled || loadingCategories} >
                              <span className="truncate">
-                              {loadingCategories
-                               ? "Loading categories..."
-                               : field.value
-                                 ? categoryNames.find(
-                                     (name) => name.toLowerCase() === field.value.toLowerCase() // Case-insensitive find
-                                   ) || field.value // Show typed value if not exact match
-                                 : "Select or type category..."}
-                             </span>
-                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              {loadingCategories ? "Loading..." : field.value ? categoryNames.find(name => name.toLowerCase() === field.value.toLowerCase()) || field.value : "Select or type..."}
+                             </span> <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </Button>
-                          </FormControl>
-                        </PopoverTrigger>
+                          </FormControl> </PopoverTrigger>
                         <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                          <Command shouldFilter={false}> {/* We do custom filtering */}
-                            <CommandInput
-                                placeholder="Search or create category..."
-                                value={categorySearch}
-                                onValueChange={setCategorySearch}
-                            />
+                          <Command shouldFilter={false}>
+                            <CommandInput placeholder="Search or create..." value={categorySearch} onValueChange={setCategorySearch} />
                              <CommandList>
-                                <CommandEmpty>
-                                    {categorySearch.trim() ? `No category found. Create "${categorySearch.trim()}"?` : 'No categories found.'}
-                                </CommandEmpty>
+                                <CommandEmpty>{categorySearch.trim() ? `Create "${categorySearch.trim()}"?` : 'No categories.'}</CommandEmpty>
                                 <CommandGroup>
                                   {categoryOptions.map((option) => (
-                                    <CommandItem
-                                      key={option.value} // Use value for key
-                                      value={option.label} // Important: value must be unique, use label here for display/selection
-                                      onSelect={() => {
-                                        form.setValue('category', option.value, { shouldValidate: true }); // Use form.setValue
-                                        setCategorySearch(option.value); // Update search to reflect selection
-                                        setCategoryPopoverOpen(false);
-                                      }}
-                                    >
-                                      <Check
-                                        className={cn(
-                                          "mr-2 h-4 w-4",
-                                          field.value?.toLowerCase() === option.value.toLowerCase() // Case-insensitive check
-                                            ? "opacity-100"
-                                            : "opacity-0"
-                                        )}
-                                      />
+                                    <CommandItem key={option.value} value={option.label} onSelect={() => {
+                                        form.setValue('category', option.value, { shouldValidate: true });
+                                        setCategorySearch(option.value); setCategoryPopoverOpen(false); }}>
+                                      <Check className={cn("mr-2 h-4 w-4", field.value?.toLowerCase() === option.value.toLowerCase() ? "opacity-100" : "opacity-0")} />
                                       {option.label}
                                     </CommandItem>
                                   ))}
@@ -299,48 +253,25 @@ export default function EditJokePage() {
                              </CommandList>
                           </Command>
                         </PopoverContent>
-                      </Popover>
-                     <FormMessage />
+                      </Popover> <FormMessage />
                   </FormItem>
-              )}
-              />
-              <FormField
-                control={form.control}
-                name="funnyRate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Funny Rate</FormLabel>
-                    <Select
-                      onValueChange={(value) => field.onChange(parseInt(value, 10))}
-                      value={field.value?.toString() ?? "0"} // Ensure value is string for Select
-                      disabled={isFormDisabled}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a rating" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="0">Unrated</SelectItem>
-                        {[1, 2, 3, 4, 5].map(rate => (
-                          <SelectItem key={rate} value={rate.toString()}>{rate} Star{rate > 1 ? 's' : ''}</SelectItem>
-                        ))}
+              )} />
+              <FormField control={form.control} name="funnyRate" render={({ field }) => (
+                  <FormItem> <FormLabel>Funny Rate</FormLabel>
+                    <Select onValueChange={(value) => field.onChange(parseInt(value, 10))} value={field.value?.toString() ?? "0"} disabled={isFormDisabled}>
+                      <FormControl> <SelectTrigger> <SelectValue placeholder="Select a rating" /> </SelectTrigger> </FormControl>
+                      <SelectContent> <SelectItem value="0">Unrated</SelectItem>
+                        {[1, 2, 3, 4, 5].map(rate => (<SelectItem key={rate} value={rate.toString()}>{rate} Star{rate > 1 ? 's' : ''}</SelectItem>))}
                       </SelectContent>
-                    </Select>
-                    <FormMessage />
+                    </Select> <FormMessage />
                   </FormItem>
-                )}
-              />
+              )} />
               <div className="flex flex-col sm:flex-row gap-2 justify-end">
-                 <Button type="button" variant="outline" onClick={() => router.push('/jokes')} disabled={isSubmitting}> {/* Updated redirect */}
+                 <Button type="button" variant="outline" onClick={() => router.push('/my-jokes')} disabled={isSubmitting}>
                     <ArrowLeft className="mr-2 h-4 w-4" /> Cancel
                  </Button>
                  <Button type="submit" disabled={isFormDisabled}>
-                  {isSubmitting ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Save className="mr-2 h-4 w-4" />
-                  )}
+                  {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                   {isSubmitting ? 'Saving...' : 'Save Changes'}
                  </Button>
               </div>

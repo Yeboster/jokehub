@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, type FormEvent, useEffect, Suspense } from 'react'; // Added Suspense
+import { useState, type FormEvent, useEffect, Suspense } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -18,10 +18,10 @@ function AuthPageComponent() {
   const [isLoading, setIsLoading] = useState(false);
   const { signIn, signUp, user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const searchParams = useSearchParams(); // This hook necessitates Suspense
+  const searchParams = useSearchParams();
   const { toast } = useToast();
 
-  const redirectPath = searchParams.get('redirect') || '/jokes'; // Updated redirect
+  const redirectPath = searchParams.get('redirect') || '/my-jokes'; // Default redirect to my-jokes
 
   useEffect(() => {
     if (!authLoading && user) {
@@ -47,7 +47,6 @@ function AuthPageComponent() {
         await signUp(email, password);
       }
       toast({ title: isLogin ? 'Login Successful' : 'Signup Successful', description: 'Redirecting...' });
-      // Redirection is handled by useEffect
     } catch (error: any) {
       console.error("Auth error:", error);
       let errorMessage = error.message || (isLogin ? 'Failed to login.' : 'Failed to sign up.');
@@ -74,7 +73,7 @@ function AuthPageComponent() {
     );
   }
   
-  if (user) {
+  if (user) { // If user is already logged in (e.g. navigated here manually), redirect them.
      return (
       <div className="flex justify-center items-center min-h-[calc(100vh-8rem)]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -89,37 +88,18 @@ function AuthPageComponent() {
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">{isLogin ? 'Login to Joke Hub' : 'Create Your Joke Hub Account'}</CardTitle>
           <CardDescription>
-            {isLogin ? 'Welcome back! Access your collection of jokes.' : 'Join Joke Hub to save and manage your favorite jokes.'}
+            {isLogin ? 'Access your personal joke collection.' : 'Join to save and manage your jokes.'}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="email">Email Address</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                placeholder="you@example.com"
-                disabled={isLoading}
-                className="text-base"
-              />
+              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="you@example.com" disabled={isLoading} className="text-base"/>
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                placeholder="••••••••"
-                disabled={isLoading}
-                minLength={6}
-                className="text-base"
-              />
+              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required placeholder="••••••••" disabled={isLoading} minLength={6} className="text-base"/>
             </div>
             <Button type="submit" className="w-full text-base py-3" disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -142,7 +122,7 @@ export default function AuthPage() {
     <Suspense fallback={
       <div className="flex justify-center items-center min-h-[calc(100vh-8rem)]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="ml-2 text-muted-foreground">Loading page content...</p>
+        <p className="ml-2 text-muted-foreground">Loading page...</p>
       </div>
     }>
       <AuthPageComponent />

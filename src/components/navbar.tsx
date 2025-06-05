@@ -2,7 +2,7 @@
 "use client";
 
 import Link from 'next/link';
-import { Home, Settings, LogIn, LogOut, UserCircle, Loader2, ListChecks } from 'lucide-react'; // Added ListChecks
+import { Home, Settings, LogIn, LogOut, UserCircle, Loader2, ListChecks, UserRoundCog } from 'lucide-react'; // Added UserRoundCog
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -22,8 +22,9 @@ const Navbar = () => {
 
   const navItems = [
     { href: '/', label: 'Home', icon: Home, public: true },
-    { href: '/jokes', label: 'Jokes', icon: ListChecks, public: true }, // New "Jokes" link
-    { href: '/manage', label: 'Manage Jokes', icon: Settings, public: false },
+    { href: '/jokes', label: 'All Jokes', icon: ListChecks, public: true }, // Renamed to "All Jokes"
+    { href: '/my-jokes', label: 'My Jokes', icon: UserRoundCog, public: false, requiresAuth: true }, // New "My Jokes" link
+    { href: '/manage', label: 'Manage Jokes', icon: Settings, public: false, requiresAuth: true },
   ];
 
   if (loading) {
@@ -49,7 +50,7 @@ const Navbar = () => {
         </Link>
         <div className="flex items-center space-x-2 sm:space-x-4">
           {navItems.map((item) => 
-            (item.public || (!item.public && user)) && (
+            (item.public || (item.requiresAuth && user)) && ( // Check requiresAuth for non-public items
             <Button
               key={item.href}
               variant={pathname === item.href ? 'secondary' : 'ghost'}
@@ -82,9 +83,7 @@ const Navbar = () => {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            // For the landing page, login might be part of the page content,
-            // but keeping it in navbar is also fine for consistency.
-            pathname !== '/auth' && ( // Avoid showing login button on login page itself
+            pathname !== '/auth' && (
               <Button variant="ghost" size="sm" asChild>
                 <Link href="/auth" className="flex items-center">
                   <LogIn className="mr-0 h-4 w-4 sm:mr-2" />

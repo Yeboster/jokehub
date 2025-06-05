@@ -5,45 +5,51 @@ service cloud.firestore {
   match /databases/{database}/documents {
     // Jokes collection rules
     match /jokes/{jokeId} {
-      // Allow read access to any authenticated user for their own jokes
-      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      // ANYONE can read jokes
+      allow read: if true;
 
-      // Allow create access to any authenticated user, ensuring userId matches auth.uid
-      // and category is a non-empty string.
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid
-                      && request.resource.data.category is string
-                      && request.resource.data.category.size() > 0;
+      // Authenticated users can create jokes for themselves.
+      // Ensures essential fields are present and valid.
+      allow create: if request.auth != null
+                      && request.resource.data.userId == request.auth.uid
+                      && request.resource.data.text is string && request.resource.data.text.size() > 0
+                      && request.resource.data.category is string && request.resource.data.category.size() > 0
+                      && request.resource.data.funnyRate is number
+                      && request.resource.data.funnyRate >= 0 && request.resource.data.funnyRate <= 5
+                      && request.resource.data.dateAdded is timestamp // Handled by server/Timestamp.now()
+                      && request.resource.data.used is bool;
 
-      // Allow update and delete access only to the user who owns the joke
-      // Ensure category remains a non-empty string if updated.
+      // Owner can update their joke.
+      // Ensures fields maintain their type and valid values if changed.
+      // userId and dateAdded cannot be changed by client.
       allow update: if request.auth != null && resource.data.userId == request.auth.uid
-                      && (request.resource.data.category == resource.data.category || 
-                         (request.resource.data.category is string && request.resource.data.category.size() > 0));
+                      && request.resource.data.userId == resource.data.userId // Cannot change owner
+                      && request.resource.data.dateAdded == resource.data.dateAdded // Cannot change dateAdded
+                      && (request.resource.data.text == resource.data.text || (request.resource.data.text is string && request.resource.data.text.size() > 0))
+                      && (request.resource.data.category == resource.data.category || (request.resource.data.category is string && request.resource.data.category.size() > 0))
+                      && (request.resource.data.funnyRate == resource.data.funnyRate || (request.resource.data.funnyRate is number && request.resource.data.funnyRate >= 0 && request.resource.data.funnyRate <= 5))
+                      && (request.resource.data.used == resource.data.used || request.resource.data.used is bool);
+
+      // Owner can delete their joke.
       allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
 
     // Categories collection rules
     match /categories/{categoryId} {
-      // Allow read access to any authenticated user for their own categories
-      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      // ANYONE can read categories (for filtering)
+      allow read: if true;
 
-      // Allow create access to any authenticated user, ensuring userId matches auth.uid
-      // and name is a non-empty string.
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid
-                      && request.resource.data.name is string 
+      // Authenticated users can create categories for themselves.
+      // Ensures name is a non-empty string.
+      allow create: if request.auth != null
+                      && request.resource.data.userId == request.auth.uid
+                      && request.resource.data.name is string
                       && request.resource.data.name.size() > 0;
-      
-      // Categories are generally not updated (name change implies new category)
-      // or deleted (could orphan jokes, or requires more complex logic).
-      // For simplicity, disallow update/delete. If needed, these can be added
-      // with specific constraints (e.g., only if no jokes reference it for delete).
-      allow update: if false; 
+
+      // Disallow direct updates/deletes of categories for simplicity.
+      // Category management could be a future enhancement.
+      allow update: if false;
       allow delete: if false;
     }
-
-    // Add rules for other collections if needed, for example:
-    // match /users/{userId} {
-    //   allow read, write: if request.auth != null && request.auth.uid == userId;
-    // }
   }
 }

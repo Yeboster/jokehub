@@ -1,12 +1,14 @@
 
 "use client";
 
+import { useEffect, useState } from 'react'; // Added useEffect and useState
 import { useAuth } from '@/contexts/AuthContext';
-import { useJokes } from '@/contexts/JokeContext';
+import { useJokes, type FilterParams } from '@/contexts/JokeContext'; // Import FilterParams
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowRight, Laugh, Loader2 } from 'lucide-react';
+import type { Joke } from '@/lib/types'; // Ensure Joke type is imported
 
 const StaticJokeDisplay: React.FC<{ text: string; category: string }> = ({ text, category }) => (
   <Card className="bg-muted/30 shadow-md">
@@ -21,19 +23,42 @@ const StaticJokeDisplay: React.FC<{ text: string; category: string }> = ({ text,
 
 export default function LandingPage() {
   const { user, loading: authLoading } = useAuth();
-  const { jokes, loadingInitialJokes } = useJokes();
+  // Use loadJokesWithFilters to fetch a few public jokes for logged-out users or user's jokes if logged in.
+  const { jokes, loadJokesWithFilters, loadingInitialJokes } = useJokes();
+  const [displayedJokes, setDisplayedJokes] = useState<Joke[]>([]);
 
   const hardcodedJokes = [
-    { id: 'hc1', text: "Why don't scientists trust atoms? Because they make up everything!", category: "Science" },
-    { id: 'hc2', text: "Why did the scarecrow win an award? Because he was outstanding in his field!", category: "Puns" },
-    { id: 'hc3', text: "What do you call fake spaghetti? An impasta!", category: "Food" },
+    { id: 'hc1', text: "Why don't scientists trust atoms? Because they make up everything!", category: "Science", dateAdded: new Date(), used: false, funnyRate: 0, userId: 'public' },
+    { id: 'hc2', text: "Why did the scarecrow win an award? Because he was outstanding in his field!", category: "Puns", dateAdded: new Date(), used: false, funnyRate: 0, userId: 'public' },
+    { id: 'hc3', text: "What do you call fake spaghetti? An impasta!", category: "Food", dateAdded: new Date(), used: false, funnyRate: 0, userId: 'public' },
   ];
 
-  const jokesToShow = user 
-    ? (jokes || []).slice(0, 3) 
-    : hardcodedJokes;
+  useEffect(() => {
+    if (!authLoading) {
+      const filters: FilterParams = {
+        selectedCategories: [],
+        filterFunnyRate: -1,
+        showOnlyUsed: false,
+        scope: user ? 'user' : 'public', // Fetch user's jokes or public jokes
+      };
+      loadJokesWithFilters(filters);
+    }
+  }, [user, authLoading, loadJokesWithFilters]);
 
-  const isLoading = authLoading || (user && loadingInitialJokes);
+  useEffect(() => {
+    if (user) {
+      setDisplayedJokes((jokes || []).slice(0, 3));
+    } else {
+      if (jokes && jokes.length > 0) { // Prefer fetched public jokes
+        setDisplayedJokes(jokes.slice(0,3));
+      } else if (!loadingInitialJokes) { // Fallback to hardcoded if public fetch yields nothing
+         setDisplayedJokes(hardcodedJokes);
+      }
+    }
+  }, [user, jokes, loadingInitialJokes]);
+
+
+  const isLoading = authLoading || loadingInitialJokes;
 
   return (
     <div className="container mx-auto px-4 py-8 md:py-16 text-center">
@@ -56,28 +81,35 @@ export default function LandingPage() {
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <p className="ml-2 text-muted-foreground">Loading jokes...</p>
           </div>
-        ) : jokesToShow.length > 0 ? (
+        ) : displayedJokes.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto text-left">
-            {jokesToShow.map((joke) => (
+            {displayedJokes.map((joke) => (
               <StaticJokeDisplay key={joke.id} text={joke.text} category={joke.category} />
             ))}
           </div>
         ) : (
           <p className="text-muted-foreground">
-            {user ? "You haven't added any jokes yet. Let's get started!" : "No sample jokes to display right now."}
+            {user ? "You haven't added any jokes yet. Go to 'My Jokes' to add some!" : "No sample jokes to display right now."}
           </p>
         )}
       </section>
 
-      <section className="space-y-4 md:space-y-0 md:space-x-4">
+      <section className="space-y-4 md:space-y-0 md:flex md:items-center md:justify-center md:space-x-4">
         <Button size="lg" asChild className="bg-accent hover:bg-accent/90 text-accent-foreground">
-          <Link href="/jokes">
+          <Link href="/jokes"> {/* Link to public "All Jokes" feed */}
             Explore All Jokes <ArrowRight className="ml-2 h-5 w-5" />
           </Link>
         </Button>
+        {user && (
+           <Button size="lg" variant="outline" asChild>
+            <Link href="/my-jokes">
+              View My Jokes
+            </Link>
+          </Button>
+        )}
         {!user && !authLoading && (
           <Button size="lg" variant="outline" asChild>
-            <Link href="/auth?redirect=/jokes">
+            <Link href="/auth?redirect=/my-jokes"> {/* Redirect to My Jokes after login */}
               Log In or Sign Up
             </Link>
           </Button>
