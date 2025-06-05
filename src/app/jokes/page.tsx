@@ -69,6 +69,9 @@ export default function JokesPage() {
       currentActiveScope = 'public';
       setActiveFilters(prev => ({ ...prev, scope: 'public', selectedCategories: [] }));
     }
+    // Initialize tempScope with activeFilters.scope when component mounts or activeFilters.scope changes
+    // This ensures the modal starts with the correct scope selected.
+    setTempScope(currentActiveScope); 
     loadJokesWithFilters({ ...activeFilters, scope: currentActiveScope });
 
   }, [authLoading, user, activeFilters, loadJokesWithFilters]);
@@ -94,6 +97,7 @@ export default function JokesPage() {
   const jokesToDisplay = useMemo(() => jokes ?? [], [jokes]);
 
   const handleOpenFilterModal = () => {
+    // When opening the modal, ensure its temporary state reflects the currently active filters.
     setTempScope(activeFilters.scope);
     const validCategoriesForCurrentActiveScope = activeScopeCategoryNames;
     setTempSelectedCategories(activeFilters.selectedCategories.filter(cat => validCategoriesForCurrentActiveScope.includes(cat)));
@@ -104,7 +108,7 @@ export default function JokesPage() {
   };
 
   const handleApplyFilters = () => {
-    const validCategoriesForNewScope = modalCategoryNames;
+    const validCategoriesForNewScope = modalCategoryNames; // Uses tempScope due to memo dependency
     const validatedSelectedCategories = tempSelectedCategories.filter(cat => validCategoriesForNewScope.includes(cat));
 
     const newFilters: FilterParams = {
@@ -118,18 +122,18 @@ export default function JokesPage() {
   };
 
   const handleClearFilters = () => {
+    // "Clear All" now resets scope to 'public' and clears other filters.
     const defaultPageFilters: FilterParams = {
-      scope: user ? activeFilters.scope : 'public', 
+      scope: 'public', 
       selectedCategories: [],
       filterFunnyRate: -1,
       showOnlyUsed: false,
     };
-     if (!user && activeFilters.scope === 'user') {
-      defaultPageFilters.scope = 'public';
-    }
-
+    
     setActiveFilters(defaultPageFilters);
-    setTempScope(defaultPageFilters.scope);
+    
+    // Also reset the temporary states for the modal to reflect the cleared state
+    setTempScope('public'); 
     setTempSelectedCategories([]);
     setTempFilterFunnyRate(-1);
     setTempShowOnlyUsed(false);
@@ -240,11 +244,13 @@ export default function JokesPage() {
       <div className="mb-6 p-4 flex flex-wrap items-center gap-x-4 gap-y-3 border-b pb-6">
         <Dialog open={isFilterModalOpen} onOpenChange={(isOpen) => {
           if (!isOpen) {
+            // If modal is closed without applying, reset temp states to active ones
             setTempScope(activeFilters.scope);
             const validCategoriesForCurrentActiveScope = activeScopeCategoryNames;
             setTempSelectedCategories(activeFilters.selectedCategories.filter(cat => validCategoriesForCurrentActiveScope.includes(cat)));
             setTempFilterFunnyRate(activeFilters.filterFunnyRate);
             setTempShowOnlyUsed(activeFilters.showOnlyUsed);
+            setCategorySearch('');
           }
           setIsFilterModalOpen(isOpen);
         }}>
@@ -276,7 +282,9 @@ export default function JokesPage() {
                       setTempScope('public'); 
                     } else {
                       setTempScope(value);
+                      // When scope changes in modal, clear selected categories as they might not be valid for the new scope
                       setTempSelectedCategories([]);
+                      setCategorySearch('');
                     }
                   }}
                   disabled={authLoading}
@@ -341,6 +349,7 @@ export default function JokesPage() {
                         placeholder="Search categories..."
                         value={categorySearch}
                         onValueChange={setCategorySearch}
+                        className="h-9"
                       />
                       <CommandList>
                         <CommandEmpty>{modalCategoryNames.length === 0 ? "No categories available." : "No categories found."}</CommandEmpty>
