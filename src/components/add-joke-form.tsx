@@ -95,7 +95,13 @@ const AddJokeForm: FC<AddJokeFormProps> = ({ onAddJoke, aiGeneratedText, aiGener
   };
 
   const isFormDisabled = !user || isSubmitting || loadingCategories;
-  const categoryNames = useMemo(() => Array.isArray(categories) ? categories.map(cat => cat.name).sort() : [], [categories]);
+  const categoryNames = useMemo(() => {
+    if (!categories || !user) return [];
+    // For adding a new joke, users can only pick from categories they've created, or make a new one for themselves.
+    // Public categories aren't an option to assign to their new joke.
+    return Array.isArray(categories) ? categories.filter(cat => cat.userId === user.uid).map(cat => cat.name).sort() : [];
+  }, [categories, user]);
+
 
   const categoryOptions = useMemo(() => {
     let filtered = categoryNames;
@@ -116,16 +122,16 @@ const AddJokeForm: FC<AddJokeFormProps> = ({ onAddJoke, aiGeneratedText, aiGener
   }, [categoryNames, categorySearch]);
 
   return (
-    <Card>
-      <CardHeader className="p-4 pt-3"> 
-        <CardTitle className="text-base">Add a New Joke</CardTitle> 
+    <Card className="shadow-none border-0">
+      <CardHeader className="p-0 pt-1"> 
+        <CardTitle className="text-xs font-semibold">Or Add Manually</CardTitle> 
       </CardHeader>
-      <CardContent className="p-4 pt-0"> 
+      <CardContent className="p-0 pt-1.5"> 
         {!user && (
           <div className="mb-3 p-2.5 rounded-md bg-yellow-50 border border-yellow-200 text-yellow-700 flex items-center text-sm">
             <ShieldAlert className="mr-2 h-4 w-4 flex-shrink-0" />
             <div>
-              Please <Link href="/auth?redirect=/jokes" className="font-semibold underline hover:text-yellow-800">log in or sign up</Link> to add jokes. {/* Updated redirect */}
+              Please <Link href="/auth?redirect=/jokes" className="font-semibold underline hover:text-yellow-800">log in or sign up</Link> to add jokes.
             </div>
           </div>
         )}
@@ -149,7 +155,7 @@ const AddJokeForm: FC<AddJokeFormProps> = ({ onAddJoke, aiGeneratedText, aiGener
               name="category"
               render={({ field }) => (
                  <FormItem className="flex flex-col">
-                    <FormLabel className="text-xs">Category</FormLabel> 
+                    <FormLabel className="text-xs">Category (for your jokes)</FormLabel> 
                      <Popover open={isCategoryPopoverOpen} onOpenChange={setCategoryPopoverOpen}>
                         <PopoverTrigger asChild>
                          <FormControl>
@@ -173,7 +179,7 @@ const AddJokeForm: FC<AddJokeFormProps> = ({ onAddJoke, aiGeneratedText, aiGener
                             </Button>
                           </FormControl>
                         </PopoverTrigger>
-                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0 max-h-60" align="start">
                           <Command shouldFilter={false}> 
                             <CommandInput
                                 placeholder="Search or create category..."
@@ -181,9 +187,9 @@ const AddJokeForm: FC<AddJokeFormProps> = ({ onAddJoke, aiGeneratedText, aiGener
                                 onValueChange={setCategorySearch}
                                 className="h-9" 
                             />
-                             <CommandList>
+                             <CommandList className="max-h-52">
                                 <CommandEmpty>
-                                    {categorySearch.trim() ? `No category found. Create "${categorySearch.trim()}"?` : 'No categories found.'}
+                                    {loadingCategories ? "Loading..." : categorySearch.trim() ? `No personal category found. Create "${categorySearch.trim()}"?` : 'No personal categories found.'}
                                 </CommandEmpty>
                                 <CommandGroup>
                                   {categoryOptions.map((option) => (
@@ -191,7 +197,7 @@ const AddJokeForm: FC<AddJokeFormProps> = ({ onAddJoke, aiGeneratedText, aiGener
                                       key={option.value} 
                                       value={option.label} 
                                       onSelect={() => {
-                                        form.setValue('category', option.value, {shouldValidate: true}); // Use form.setValue
+                                        form.setValue('category', option.value, {shouldValidate: true}); 
                                         setCategorySearch(option.value); 
                                         setCategoryPopoverOpen(false);
                                       }}
@@ -246,13 +252,13 @@ const AddJokeForm: FC<AddJokeFormProps> = ({ onAddJoke, aiGeneratedText, aiGener
              {form.formState.errors.root && (
                 <FormMessage>{form.formState.errors.root.message}</FormMessage>
              )}
-            <Button type="submit" className="w-full sm:w-auto" disabled={isFormDisabled} size="sm">
+            <Button type="submit" className="w-full" disabled={isFormDisabled} size="sm">
               {isSubmitting ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
                 <Plus className="mr-2 h-4 w-4" />
               )}
-              {isSubmitting ? 'Adding...' : 'Add Joke'}
+              {isSubmitting ? 'Adding...' : 'Add This Joke'}
             </Button>
           </form>
         </Form>

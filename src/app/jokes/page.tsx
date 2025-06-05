@@ -266,7 +266,8 @@ export default function JokesPage() {
                 Select preferences to filter the joke feed.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-6 py-4">
+            <ScrollArea className="max-h-[calc(80vh-200px)] md:max-h-[calc(70vh-150px)]">
+            <div className="grid gap-6 py-4 pr-3">
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="filter-scope-select" className="text-right">
                   Show Jokes
@@ -346,7 +347,7 @@ export default function JokesPage() {
                         value={categorySearch}
                         onValueChange={setCategorySearch}
                       />
-                      <CommandList>
+                      <CommandList className="max-h-48">
                         <CommandEmpty>{modalCategoryNames.length === 0 ? "No categories available." : "No categories found."}</CommandEmpty>
                         <CommandGroup>
                           {filteredCategoryOptionsForModal.map((categoryName) => (
@@ -405,7 +406,8 @@ export default function JokesPage() {
                 </div>
               </div>
             </div>
-            <DialogFooter>
+            </ScrollArea>
+            <DialogFooter className="pt-4 border-t">
               <Button variant="outline" onClick={() => setIsFilterModalOpen(false)}>Cancel</Button>
               <Button onClick={handleApplyFilters}>Apply Filters</Button>
             </DialogFooter>
