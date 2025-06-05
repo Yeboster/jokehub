@@ -68,8 +68,9 @@ export default function JokesPage() {
     if (activeFilters.scope === 'user' && !user) {
       currentActiveScope = 'public';
       setActiveFilters(prev => ({ ...prev, scope: 'public', selectedCategories: [] }));
-      return;
+      // No immediate reload here, it will happen below if scope changes
     }
+    // Trigger initial load or reload when activeFilters change or user logs in/out affecting 'user' scope.
     loadJokesWithFilters({ ...activeFilters, scope: currentActiveScope });
 
   }, [authLoading, user, activeFilters, loadJokesWithFilters]);
@@ -96,7 +97,7 @@ export default function JokesPage() {
 
   const handleOpenFilterModal = () => {
     setTempScope(activeFilters.scope);
-    const validCategoriesForCurrentActiveScope = activeScopeCategoryNames;
+    const validCategoriesForCurrentActiveScope = activeScopeCategoryNames; // Use categories for the *currently active* scope
     setTempSelectedCategories(activeFilters.selectedCategories.filter(cat => validCategoriesForCurrentActiveScope.includes(cat)));
     setTempFilterFunnyRate(activeFilters.filterFunnyRate);
     setTempShowOnlyUsed(activeFilters.showOnlyUsed);
@@ -105,7 +106,7 @@ export default function JokesPage() {
   };
 
   const handleApplyFilters = () => {
-    const validCategoriesForNewScope = modalCategoryNames;
+    const validCategoriesForNewScope = modalCategoryNames; // Use categories for the *newly selected temporary* scope
     const validatedSelectedCategories = tempSelectedCategories.filter(cat => validCategoriesForNewScope.includes(cat));
 
     const newFilters: FilterParams = {
@@ -120,7 +121,7 @@ export default function JokesPage() {
 
   const handleClearFilters = () => {
     const defaultPageFilters: FilterParams = {
-      scope: user ? 'user' : 'public', // Default to user if logged in, else public
+      scope: user ? activeFilters.scope : 'public', // Keep current scope if user exists, else public
       selectedCategories: [],
       filterFunnyRate: -1,
       showOnlyUsed: false,
@@ -130,6 +131,7 @@ export default function JokesPage() {
     }
 
     setActiveFilters(defaultPageFilters);
+    // Also reset temporary filters for the modal
     setTempScope(defaultPageFilters.scope);
     setTempSelectedCategories([]);
     setTempFilterFunnyRate(-1);
@@ -241,6 +243,7 @@ export default function JokesPage() {
       <div className="mb-6 p-4 flex flex-wrap items-center gap-x-4 gap-y-3 border-b pb-6">
         <Dialog open={isFilterModalOpen} onOpenChange={(isOpen) => {
           if (!isOpen) {
+            // Reset temporary filters to match active ones if dialog is closed without applying
             setTempScope(activeFilters.scope);
             const validCategoriesForCurrentActiveScope = activeScopeCategoryNames;
             setTempSelectedCategories(activeFilters.selectedCategories.filter(cat => validCategoriesForCurrentActiveScope.includes(cat)));
@@ -273,9 +276,10 @@ export default function JokesPage() {
                   onValueChange={(value: FilterParams['scope']) => {
                     if (value === 'user' && !user) {
                       toast({ title: 'Login Required', description: 'Log in to see your jokes.', variant: 'destructive'});
-                      setTempScope('public');
+                      setTempScope('public'); // Revert or keep as public if login fails
                     } else {
                       setTempScope(value);
+                      // Important: Reset selected categories when scope changes, as they might not be valid
                       setTempSelectedCategories([]);
                     }
                   }}
@@ -335,7 +339,7 @@ export default function JokesPage() {
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0 max-h-60" align="start">
                     <Command>
                       <CommandInput
                         placeholder="Search categories..."
