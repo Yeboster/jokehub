@@ -30,7 +30,7 @@ export default function JokesPage() {
   const { toast } = useToast();
   const {
     jokes,
-    categories: allCategoriesFromContext, // Renamed to avoid conflict
+    categories: allCategoriesFromContext,
     addJoke,
     loadJokesWithFilters,
     loadMoreFilteredJokes,
@@ -40,7 +40,7 @@ export default function JokesPage() {
    } = useJokes();
 
   const [activeFilters, setActiveFilters] = useState<FilterParams>({
-    scope: 'public', // Default scope
+    scope: 'public',
     selectedCategories: [],
     filterFunnyRate: -1,
     showOnlyUsed: false,
@@ -50,7 +50,6 @@ export default function JokesPage() {
   const [isAddJokeModalOpen, setIsAddJokeModalOpen] = useState(false);
   const [isCategoryPopoverOpen, setIsCategoryPopoverOpen] = useState(false);
 
-  // Temporary states for the filter modal
   const [tempScope, setTempScope] = useState<FilterParams['scope']>(activeFilters.scope);
   const [tempSelectedCategories, setTempSelectedCategories] = useState<string[]>(activeFilters.selectedCategories);
   const [tempFilterFunnyRate, setTempFilterFunnyRate] = useState<number>(activeFilters.filterFunnyRate);
@@ -68,8 +67,7 @@ export default function JokesPage() {
     let currentActiveScope = activeFilters.scope;
     if (activeFilters.scope === 'user' && !user) {
       currentActiveScope = 'public';
-      setActiveFilters(prev => ({ ...prev, scope: 'public', selectedCategories: [] })); // Reset scope and categories
-      // loadJokesWithFilters will be called by the state update triggering this effect again
+      setActiveFilters(prev => ({ ...prev, scope: 'public', selectedCategories: [] }));
       return;
     }
     loadJokesWithFilters({ ...activeFilters, scope: currentActiveScope });
@@ -77,7 +75,6 @@ export default function JokesPage() {
   }, [authLoading, user, activeFilters, loadJokesWithFilters]);
 
 
-  // Categories available for filtering *inside the modal*, based on tempScope
   const modalCategoryNames = useMemo(() => {
     if (!allCategoriesFromContext) return [];
     if (tempScope === 'user' && user) {
@@ -86,7 +83,6 @@ export default function JokesPage() {
     return Array.from(new Set(allCategoriesFromContext.map(cat => cat.name))).sort();
   }, [allCategoriesFromContext, tempScope, user]);
 
-  // Categories displayed in the active filters badge section, based on activeFilters.scope
   const activeScopeCategoryNames = useMemo(() => {
     if(!allCategoriesFromContext) return [];
     if (activeFilters.scope === 'user' && user) {
@@ -109,8 +105,7 @@ export default function JokesPage() {
   };
 
   const handleApplyFilters = () => {
-    // Validate tempSelectedCategories against categories valid for tempScope
-    const validCategoriesForNewScope = modalCategoryNames; // Based on tempScope
+    const validCategoriesForNewScope = modalCategoryNames;
     const validatedSelectedCategories = tempSelectedCategories.filter(cat => validCategoriesForNewScope.includes(cat));
 
     const newFilters: FilterParams = {
@@ -125,14 +120,17 @@ export default function JokesPage() {
 
   const handleClearFilters = () => {
     const defaultPageFilters: FilterParams = {
-      scope: 'public', // Default to public when clearing
+      scope: user ? 'user' : 'public', // Default to user if logged in, else public
       selectedCategories: [],
       filterFunnyRate: -1,
       showOnlyUsed: false,
     };
+     if (!user && activeFilters.scope === 'user') { // If user logs out while 'My Jokes' is active
+      defaultPageFilters.scope = 'public';
+    }
+
     setActiveFilters(defaultPageFilters);
-    // Reset temp states for the modal
-    setTempScope('public');
+    setTempScope(defaultPageFilters.scope);
     setTempSelectedCategories([]);
     setTempFilterFunnyRate(-1);
     setTempShowOnlyUsed(false);
@@ -161,7 +159,7 @@ export default function JokesPage() {
     );
   }, [modalCategoryNames, categorySearch]);
 
-  const hasActiveAppliedFilters = activeFilters.selectedCategories.length > 0 || activeFilters.filterFunnyRate !== -1 || activeFilters.showOnlyUsed || activeFilters.scope === 'user';
+  const hasActiveAppliedFilters = activeFilters.selectedCategories.length > 0 || activeFilters.filterFunnyRate !== -1 || activeFilters.showOnlyUsed || (user && activeFilters.scope === 'user');
 
   const handleGenerateJokeInModal = async () => {
     if (!user) {
@@ -196,6 +194,7 @@ export default function JokesPage() {
   const handleAiJokeSubmittedFromModal = () => {
     setAiGeneratedText(undefined);
     setAiGeneratedCategory(undefined);
+    setAiTopicHint('');
   };
 
   const handleAddJokeFromFormInModal = async (data: JokeFormValues) => {
@@ -240,9 +239,8 @@ export default function JokesPage() {
       </header>
 
       <div className="mb-6 p-4 flex flex-wrap items-center gap-x-4 gap-y-3 border-b pb-6">
-        {/* Filter Modal Trigger */}
         <Dialog open={isFilterModalOpen} onOpenChange={(isOpen) => {
-          if (!isOpen) { // If modal is closed without applying, reset temps
+          if (!isOpen) {
             setTempScope(activeFilters.scope);
             const validCategoriesForCurrentActiveScope = activeScopeCategoryNames;
             setTempSelectedCategories(activeFilters.selectedCategories.filter(cat => validCategoriesForCurrentActiveScope.includes(cat)));
@@ -258,7 +256,7 @@ export default function JokesPage() {
               {hasActiveAppliedFilters && <span className="ml-2 h-2 w-2 rounded-full bg-primary" />}
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[480px]"> {/* Increased width slightly for scope select */}
+          <DialogContent className="sm:max-w-[480px]">
             <DialogHeader>
               <DialogTitle>Filter Jokes</DialogTitle>
               <DialogDescription>
@@ -266,7 +264,6 @@ export default function JokesPage() {
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-6 py-4">
-              {/* Scope Selector (View As) */}
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="filter-scope-select" className="text-right">
                   Show Jokes
@@ -276,10 +273,9 @@ export default function JokesPage() {
                   onValueChange={(value: FilterParams['scope']) => {
                     if (value === 'user' && !user) {
                       toast({ title: 'Login Required', description: 'Log in to see your jokes.', variant: 'destructive'});
-                      setTempScope('public'); // Revert if user tries to select 'My Jokes' when not logged in
+                      setTempScope('public');
                     } else {
                       setTempScope(value);
-                      // When scope changes in modal, clear selected categories as available categories might change
                       setTempSelectedCategories([]);
                     }
                   }}
@@ -299,7 +295,6 @@ export default function JokesPage() {
                 </Select>
               </div>
 
-              {/* Category Filter */}
               <div className="grid grid-cols-4 items-start gap-4">
                 <Label htmlFor="modal-category-filter" className="text-right pt-2">
                   {tempScope === 'user' && user ? 'My ' : ''}Categories
@@ -318,13 +313,22 @@ export default function JokesPage() {
                         {tempSelectedCategories.map(cat => (
                           <Badge key={cat} variant="secondary" className="py-0.5 px-1.5">
                             {cat}
-                            <button
-                              type="button"
-                              className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-1"
+                            <span
+                              role="button"
+                              tabIndex={0}
+                              aria-label={`Remove category ${cat}`}
+                              className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-1 cursor-pointer"
                               onClick={(e) => { e.stopPropagation(); toggleCategorySelectionInModal(cat);}}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  toggleCategorySelectionInModal(cat);
+                                }
+                              }}
                             >
                               <XIcon className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                            </button>
+                            </span>
                           </Badge>
                         ))}
                       </div>
@@ -364,7 +368,6 @@ export default function JokesPage() {
                   </PopoverContent>
                 </Popover>
               </div>
-              {/* Rating Filter */}
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="modal-funny-rate-filter" className="text-right">Rating</Label>
                 <Select
@@ -385,7 +388,6 @@ export default function JokesPage() {
                   </SelectContent>
                 </Select>
               </div>
-              {/* Usage Status Filter */}
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="modal-show-only-used" className="text-right">Usage Status</Label>
                 <div className="col-span-3 flex items-center space-x-2">
@@ -406,7 +408,6 @@ export default function JokesPage() {
           </DialogContent>
         </Dialog>
 
-        {/* Add New Joke Modal Trigger */}
         {user && (
             <Dialog open={isAddJokeModalOpen} onOpenChange={setIsAddJokeModalOpen}>
             <DialogTrigger asChild>
@@ -480,7 +481,6 @@ export default function JokesPage() {
             </Button>
         )}
 
-        {/* Active Filters Display & Clear Button */}
         <div className="flex flex-wrap items-center gap-2 flex-grow min-h-[36px]">
           {activeFilters.scope === 'user' && user && (
             <Badge variant="secondary" className="py-1 px-2 bg-primary/10 text-primary border-primary/30">Showing: My Jokes</Badge>
@@ -527,5 +527,3 @@ export default function JokesPage() {
     </div>
   );
 }
-
-    
