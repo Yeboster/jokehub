@@ -13,6 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast'; // Ensure this path is correct
 import { useAuth } from '@/contexts/AuthContext'; // Ensure this path is correct
+import { cn } from '@/lib/utils';
 
 interface CSVImportProps {
   // Defines the expected structure of jokes after parsing from CSV, before adding to DB
@@ -213,16 +214,18 @@ const CSVImport: FC<CSVImportProps> = ({ onImport }) => {
              <Input
                 id="csv-file"
                 type="file"
-                accept=".csv, text/csv" // Be more specific with accept types
+                accept=".csv, text/csv" 
                 onChange={handleFileChange}
                 disabled={isImportDisabled}
                 ref={fileInputRef}
-                className="cursor-pointer file:cursor-pointer file:text-sm file:font-semibold file:text-primary file:bg-accent file:border-none file:rounded-md file:px-3 file:py-1.5 hover:file:bg-primary/10 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className={cn(
+                    "cursor-pointer focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                    "file:cursor-pointer file:text-sm file:font-semibold",
+                    "file:bg-accent file:text-accent-foreground",
+                    "file:border-none file:rounded-md file:px-3 file:py-1.5",
+                    "hover:file:bg-accent/90"
+                )}
              />
-             {/* This button is an alternative way to trigger the file input, often hidden or styled differently */}
-             {/* <Button onClick={() => fileInputRef.current?.click()} disabled={isImportDisabled} variant="outline">
-                <Upload className="mr-2 h-4 w-4" /> {isLoading ? 'Importing...' : 'Upload'}
-            </Button> */}
           </div>
           {isLoading && <p className="text-sm text-muted-foreground mt-2">Processing file, please wait...</p>}
         </div>
