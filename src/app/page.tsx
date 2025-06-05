@@ -1,21 +1,21 @@
 
 "use client";
 
-import { useEffect, useState } from 'react'; // Added useEffect and useState
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useJokes, type FilterParams } from '@/contexts/JokeContext'; // Import FilterParams
+import { useJokes, type FilterParams } from '@/contexts/JokeContext';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input'; // Added for AI modal
-import { Label } from '@/components/ui/label'; // Added for AI modal
-import { Dialog, DialogTrigger, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog'; // Added for AI modal
-import { ScrollArea } from '@/components/ui/scroll-area'; // Added for AI modal
-import { ArrowRight, Laugh, Loader2, PlusCircle, Wand2 } from 'lucide-react'; // Added icons
-import type { Joke } from '@/lib/types'; // Ensure Joke type is imported
-import AddJokeForm, { type JokeFormValues } from '@/components/add-joke-form'; // Added for AI modal
-import type { GenerateJokeOutput } from '@/ai/flows/generate-joke-flow'; // Added for AI modal
-import { useToast } from '@/hooks/use-toast'; // Added for AI modal
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogTrigger, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { ArrowRight, Laugh, Loader2, PlusCircle, Wand2 } from 'lucide-react';
+import type { Joke } from '@/lib/types';
+import AddJokeForm, { type JokeFormValues } from '@/components/add-joke-form';
+import type { GenerateJokeOutput } from '@/ai/flows/generate-joke-flow';
+import { useToast } from '@/hooks/use-toast';
 
 
 const StaticJokeDisplay: React.FC<{ text: string; category: string }> = ({ text, category }) => (
@@ -35,7 +35,6 @@ export default function LandingPage() {
   const [displayedJokes, setDisplayedJokes] = useState<Joke[]>([]);
   const { toast } = useToast();
 
-  // State for Add Joke Modal
   const [isAddJokeModalOpen, setIsAddJokeModalOpen] = useState(false);
   const [isGeneratingJoke, setIsGeneratingJoke] = useState(false);
   const [aiTopicHint, setAiTopicHint] = useState<string | undefined>();
@@ -55,7 +54,7 @@ export default function LandingPage() {
         selectedCategories: [],
         filterFunnyRate: -1,
         showOnlyUsed: false,
-        scope: user ? 'user' : 'public', 
+        scope: user ? 'user' : 'public',
       };
       loadJokesWithFilters(filters);
     }
@@ -65,9 +64,9 @@ export default function LandingPage() {
     if (user) {
       setDisplayedJokes((jokes || []).slice(0, 3));
     } else {
-      if (jokes && jokes.length > 0) { 
+      if (jokes && jokes.length > 0) {
         setDisplayedJokes(jokes.slice(0,3));
-      } else if (!loadingInitialJokes) { 
+      } else if (!loadingInitialJokes) {
          setDisplayedJokes(hardcodedJokes);
       }
     }
@@ -121,7 +120,6 @@ export default function LandingPage() {
     }
     await addJoke(data);
     setIsAddJokeModalOpen(false);
-    // Potentially refetch displayed jokes if it's user's latest laughs
      if (user) {
       const filters: FilterParams = { selectedCategories: [], filterFunnyRate: -1, showOnlyUsed: false, scope: 'user' };
       loadJokesWithFilters(filters);
@@ -158,18 +156,18 @@ export default function LandingPage() {
           </div>
         ) : (
           <p className="text-muted-foreground">
-            {user ? "You haven't added any jokes yet. Go to 'My Jokes' to add some!" : "No sample jokes to display right now."}
+            {user ? "You haven't added any jokes yet. Go to 'All Jokes' to add some!" : "No sample jokes to display right now."}
           </p>
         )}
       </section>
 
       <section className="space-y-4 md:space-y-0 md:flex md:items-center md:justify-center md:space-x-4">
         <Button size="lg" asChild className="bg-accent hover:bg-accent/90 text-accent-foreground">
-          <Link href="/jokes"> 
+          <Link href="/jokes">
             Explore All Jokes <ArrowRight className="ml-2 h-5 w-5" />
           </Link>
         </Button>
-        
+
         {user && (
            <Dialog open={isAddJokeModalOpen} onOpenChange={setIsAddJokeModalOpen}>
             <DialogTrigger asChild>
@@ -194,7 +192,7 @@ export default function LandingPage() {
                     </h3>
                     <div>
                         <Label htmlFor="ai-topic-hint-landing" className="text-xs">Topic Hint (Optional)</Label>
-                        <Input 
+                        <Input
                             id="ai-topic-hint-landing"
                             type="text"
                             placeholder="e.g., animals, space"
@@ -204,9 +202,9 @@ export default function LandingPage() {
                             className="mt-1 h-8 text-xs"
                         />
                     </div>
-                    <Button 
-                        onClick={handleGenerateJokeInModal} 
-                        disabled={isGeneratingJoke || !user} 
+                    <Button
+                        onClick={handleGenerateJokeInModal}
+                        disabled={isGeneratingJoke || !user}
                         className="w-full"
                         size="sm"
                     >
@@ -223,8 +221,8 @@ export default function LandingPage() {
                         </p>
                     )}
                     </div>
-                    <AddJokeForm 
-                        onAddJoke={handleAddJokeFromFormInModal} 
+                    <AddJokeForm
+                        onAddJoke={handleAddJokeFromFormInModal}
                         aiGeneratedText={aiGeneratedText}
                         aiGeneratedCategory={aiGeneratedCategory}
                         onAiJokeSubmitted={handleAiJokeSubmittedFromModal}
@@ -234,18 +232,19 @@ export default function LandingPage() {
             </DialogContent>
             </Dialog>
         )}
-        
+
+        {/* "View My Jokes" button now links to /jokes where user can select "My Jokes" view */}
         {user && (
            <Button size="lg" variant="outline" asChild>
-            <Link href="/my-jokes">
-              View My Jokes
+            <Link href="/jokes">
+              View My Collection
             </Link>
           </Button>
         )}
 
         {!user && !authLoading && (
           <Button size="lg" variant="outline" asChild>
-            <Link href="/auth?redirect=/my-jokes"> 
+            <Link href="/auth?redirect=/jokes">
               Log In or Sign Up
             </Link>
           </Button>
@@ -260,5 +259,3 @@ export default function LandingPage() {
     </div>
   );
 }
-
-    

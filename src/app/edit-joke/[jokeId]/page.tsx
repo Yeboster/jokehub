@@ -67,13 +67,13 @@ export default function EditJokePage() {
       setLoadingJokeData(true);
       setFetchError(null);
       try {
-        const fetchedJoke = await getJokeById(jokeId); // getJokeById is now public
+        const fetchedJoke = await getJokeById(jokeId);
         if (fetchedJoke) {
-          if (fetchedJoke.userId !== user.uid) { // Explicit ownership check
+          if (fetchedJoke.userId !== user.uid) {
             setFetchError('You do not have permission to edit this joke.');
             toast({ title: 'Access Denied', description: 'You can only edit your own jokes.', variant: 'destructive' });
             setJoke(null);
-            // Consider redirecting: router.push('/my-jokes'); 
+            // router.push('/jokes'); // Redirect if not owner
           } else {
             setJoke(fetchedJoke);
             form.reset({
@@ -106,22 +106,22 @@ export default function EditJokePage() {
   }, [jokeId, user, authLoading, getJokeById, form, router, toast]);
 
   const onSubmit: SubmitHandler<EditJokeFormValues> = async (data) => {
-    if (!user || !joke || joke.userId !== user.uid) { // Re-check ownership before submit
+    if (!user || !joke || joke.userId !== user.uid) {
         toast({ title: 'Error', description: 'Cannot update joke. Please try again.', variant: 'destructive'});
         return;
     }
 
      if (data.text === joke.text && data.category === joke.category && data.funnyRate === joke.funnyRate) {
          toast({ title: 'No Changes', description: 'No changes were made to the joke.' });
-         router.push('/my-jokes'); // Redirect to user's jokes
+         router.push('/jokes');
          return;
      }
 
     setIsSubmitting(true);
     try {
-      await updateJoke(joke.id, data); 
+      await updateJoke(joke.id, data);
       toast({ title: 'Success', description: 'Joke updated successfully!' });
-      router.push('/my-jokes'); // Redirect to user's jokes
+      router.push('/jokes');
     } catch (error) {
       console.error("Failed to update joke:", error);
        if (!(error instanceof Error && (error.message.includes("Category") || error.message.includes("permission denied")))) {
@@ -133,10 +133,15 @@ export default function EditJokePage() {
   };
 
   const isFormDisabled = authLoading || loadingJokeData || loadingCategories || isSubmitting || !user || !!fetchError || (joke && joke.userId !== user?.uid);
-  
-  // For category dropdown, show categories relevant to the user or all if that's preferred.
-  // For editing their own joke, it's fine to show all categories as they might re-categorize.
-  const categoryNames = useMemo(() => Array.isArray(categories) ? categories.map(cat => cat.name).sort() : [], [categories]);
+
+  const categoryNames = useMemo(() => {
+    if (!categories || !user) return [];
+    // For editing, show categories created by this user to make it easier to re-categorize among their own.
+    // Or show all global categories if that's preferred. AddJokeForm uses global for its popover.
+    // For consistency with AddJokeForm, let's show all global categories.
+    // The _ensureCategoryExistsAndAdd in context correctly scopes any new/selected category to the user.
+    return Array.isArray(categories) ? categories.map(cat => cat.name).sort() : [];
+  }, [categories, user]);
 
 
    const categoryOptions = useMemo(() => {
@@ -156,14 +161,14 @@ export default function EditJokePage() {
     return options;
   }, [categoryNames, categorySearch]);
 
-  if (authLoading) { /* ... loading UI ... */ 
+  if (authLoading) {
       return (
         <div className="container mx-auto p-4 md:p-8 flex justify-center items-center min-h-[calc(100vh-8rem)]">
           <Loader2 className="h-8 w-8 animate-spin text-primary" /> <p className="ml-2 text-muted-foreground">Verifying...</p>
         </div>
       );
   }
-   if (loadingJokeData || loadingCategories) { /* ... loading UI ... */ 
+   if (loadingJokeData || loadingCategories) {
     return (
       <div className="container mx-auto p-4 md:p-8 flex justify-center items-center min-h-[calc(100vh-8rem)]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -172,7 +177,7 @@ export default function EditJokePage() {
     );
    }
 
-    if (fetchError) { /* ... error UI ... */ 
+    if (fetchError) {
         return (
             <div className="container mx-auto p-4 md:p-8">
                  <Header title="Edit Joke" />
@@ -182,7 +187,7 @@ export default function EditJokePage() {
                         <div className="mb-4 p-3 rounded-md bg-destructive/10 border border-destructive/30 text-destructive flex items-center">
                              <ShieldAlert className="mr-2 h-5 w-5 flex-shrink-0" /> <p>{fetchError}</p>
                         </div>
-                        <Button variant="outline" onClick={() => router.push(user ? '/my-jokes' : '/jokes')}>
+                        <Button variant="outline" onClick={() => router.push('/jokes')}>
                             <ArrowLeft className="mr-2 h-4 w-4" /> Back to Jokes
                         </Button>
                     </CardContent>
@@ -190,14 +195,14 @@ export default function EditJokePage() {
             </div>
         );
     }
-    if (!joke) { // If joke is null after loading and no error (e.g. access denied without throwing to fetchError)
+    if (!joke) {
          return (
             <div className="container mx-auto p-4 md:p-8">
                  <Header title="Edit Joke" />
                  <Card className="max-w-2xl mx-auto"> <CardHeader><CardTitle>Joke Not Editable</CardTitle></CardHeader>
                     <CardContent>
                         <p className="text-muted-foreground mb-4">This joke cannot be edited or was not found.</p>
-                        <Button variant="outline" onClick={() => router.push(user ? '/my-jokes' : '/jokes')}>
+                        <Button variant="outline" onClick={() => router.push('/jokes')}>
                             <ArrowLeft className="mr-2 h-4 w-4" /> Back to Jokes
                         </Button>
                     </CardContent>
@@ -267,7 +272,7 @@ export default function EditJokePage() {
                   </FormItem>
               )} />
               <div className="flex flex-col sm:flex-row gap-2 justify-end">
-                 <Button type="button" variant="outline" onClick={() => router.push('/my-jokes')} disabled={isSubmitting}>
+                 <Button type="button" variant="outline" onClick={() => router.push('/jokes')} disabled={isSubmitting}>
                     <ArrowLeft className="mr-2 h-4 w-4" /> Cancel
                  </Button>
                  <Button type="submit" disabled={isFormDisabled}>

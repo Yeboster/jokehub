@@ -21,7 +21,7 @@ function AuthPageComponent() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
 
-  const redirectPath = searchParams.get('redirect') || '/my-jokes'; // Default redirect to my-jokes
+  const redirectPath = searchParams.get('redirect') || '/jokes'; // Default redirect to /jokes
 
   useEffect(() => {
     if (!authLoading && user) {
@@ -64,7 +64,7 @@ function AuthPageComponent() {
       setIsLoading(false);
     }
   };
-  
+
   if (authLoading) {
     return (
       <div className="flex justify-center items-center min-h-[calc(100vh-8rem)]">
@@ -72,8 +72,8 @@ function AuthPageComponent() {
       </div>
     );
   }
-  
-  if (user) { // If user is already logged in (e.g. navigated here manually), redirect them.
+
+  if (user) {
      return (
       <div className="flex justify-center items-center min-h-[calc(100vh-8rem)]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
