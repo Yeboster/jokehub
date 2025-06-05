@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { FC, ChangeEvent } from 'react';
@@ -208,9 +209,9 @@ const CSVImport: FC<CSVImportProps> = ({ onImport }) => {
             </div>
           </div>
         )}
-        <div className="grid w-full max-w-sm items-center gap-1.5">
-          <Label htmlFor="csv-file">Select CSV File</Label>
-          <div className="flex w-full max-w-sm items-center space-x-2">
+        <div className="grid max-w-sm items-center gap-1.5 mx-auto">
+          <Label htmlFor="csv-file" className="text-center">Select CSV File</Label>
+          <div className="flex w-full items-center space-x-2">
              <Input
                 id="csv-file"
                 type="file"
@@ -227,7 +228,7 @@ const CSVImport: FC<CSVImportProps> = ({ onImport }) => {
                 )}
              />
           </div>
-          {isLoading && <p className="text-sm text-muted-foreground mt-2">Processing file, please wait...</p>}
+          {isLoading && <p className="text-sm text-muted-foreground mt-2 text-center">Processing file, please wait...</p>}
         </div>
       </CardContent>
     </Card>
