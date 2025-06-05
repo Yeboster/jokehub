@@ -97,8 +97,6 @@ const AddJokeForm: FC<AddJokeFormProps> = ({ onAddJoke, aiGeneratedText, aiGener
   const isFormDisabled = !user || isSubmitting || loadingCategories;
   const categoryNames = useMemo(() => {
     if (!categories || !user) return [];
-    // For adding a new joke, users can only pick from categories they've created, or make a new one for themselves.
-    // Public categories aren't an option to assign to their new joke.
     return Array.isArray(categories) ? categories.filter(cat => cat.userId === user.uid).map(cat => cat.name).sort() : [];
   }, [categories, user]);
 
@@ -180,14 +178,14 @@ const AddJokeForm: FC<AddJokeFormProps> = ({ onAddJoke, aiGeneratedText, aiGener
                           </FormControl>
                         </PopoverTrigger>
                         <PopoverContent className="w-[--radix-popover-trigger-width] p-0 max-h-60" align="start">
-                          <Command shouldFilter={false}> 
+                          <Command> 
                             <CommandInput
                                 placeholder="Search or create category..."
                                 value={categorySearch}
                                 onValueChange={setCategorySearch}
                                 className="h-9" 
                             />
-                             <CommandList className="max-h-52">
+                             <CommandList>
                                 <CommandEmpty>
                                     {loadingCategories ? "Loading..." : categorySearch.trim() ? `No personal category found. Create "${categorySearch.trim()}"?` : 'No personal categories found.'}
                                 </CommandEmpty>

@@ -68,9 +68,7 @@ export default function JokesPage() {
     if (activeFilters.scope === 'user' && !user) {
       currentActiveScope = 'public';
       setActiveFilters(prev => ({ ...prev, scope: 'public', selectedCategories: [] }));
-      // No immediate reload here, it will happen below if scope changes
     }
-    // Trigger initial load or reload when activeFilters change or user logs in/out affecting 'user' scope.
     loadJokesWithFilters({ ...activeFilters, scope: currentActiveScope });
 
   }, [authLoading, user, activeFilters, loadJokesWithFilters]);
@@ -97,7 +95,7 @@ export default function JokesPage() {
 
   const handleOpenFilterModal = () => {
     setTempScope(activeFilters.scope);
-    const validCategoriesForCurrentActiveScope = activeScopeCategoryNames; // Use categories for the *currently active* scope
+    const validCategoriesForCurrentActiveScope = activeScopeCategoryNames;
     setTempSelectedCategories(activeFilters.selectedCategories.filter(cat => validCategoriesForCurrentActiveScope.includes(cat)));
     setTempFilterFunnyRate(activeFilters.filterFunnyRate);
     setTempShowOnlyUsed(activeFilters.showOnlyUsed);
@@ -106,7 +104,7 @@ export default function JokesPage() {
   };
 
   const handleApplyFilters = () => {
-    const validCategoriesForNewScope = modalCategoryNames; // Use categories for the *newly selected temporary* scope
+    const validCategoriesForNewScope = modalCategoryNames;
     const validatedSelectedCategories = tempSelectedCategories.filter(cat => validCategoriesForNewScope.includes(cat));
 
     const newFilters: FilterParams = {
@@ -121,17 +119,16 @@ export default function JokesPage() {
 
   const handleClearFilters = () => {
     const defaultPageFilters: FilterParams = {
-      scope: user ? activeFilters.scope : 'public', // Keep current scope if user exists, else public
+      scope: user ? activeFilters.scope : 'public', 
       selectedCategories: [],
       filterFunnyRate: -1,
       showOnlyUsed: false,
     };
-     if (!user && activeFilters.scope === 'user') { // If user logs out while 'My Jokes' is active
+     if (!user && activeFilters.scope === 'user') {
       defaultPageFilters.scope = 'public';
     }
 
     setActiveFilters(defaultPageFilters);
-    // Also reset temporary filters for the modal
     setTempScope(defaultPageFilters.scope);
     setTempSelectedCategories([]);
     setTempFilterFunnyRate(-1);
@@ -243,7 +240,6 @@ export default function JokesPage() {
       <div className="mb-6 p-4 flex flex-wrap items-center gap-x-4 gap-y-3 border-b pb-6">
         <Dialog open={isFilterModalOpen} onOpenChange={(isOpen) => {
           if (!isOpen) {
-            // Reset temporary filters to match active ones if dialog is closed without applying
             setTempScope(activeFilters.scope);
             const validCategoriesForCurrentActiveScope = activeScopeCategoryNames;
             setTempSelectedCategories(activeFilters.selectedCategories.filter(cat => validCategoriesForCurrentActiveScope.includes(cat)));
@@ -277,10 +273,9 @@ export default function JokesPage() {
                   onValueChange={(value: FilterParams['scope']) => {
                     if (value === 'user' && !user) {
                       toast({ title: 'Login Required', description: 'Log in to see your jokes.', variant: 'destructive'});
-                      setTempScope('public'); // Revert or keep as public if login fails
+                      setTempScope('public'); 
                     } else {
                       setTempScope(value);
-                      // Important: Reset selected categories when scope changes, as they might not be valid
                       setTempSelectedCategories([]);
                     }
                   }}
@@ -347,7 +342,7 @@ export default function JokesPage() {
                         value={categorySearch}
                         onValueChange={setCategorySearch}
                       />
-                      <CommandList className="max-h-48">
+                      <CommandList>
                         <CommandEmpty>{modalCategoryNames.length === 0 ? "No categories available." : "No categories found."}</CommandEmpty>
                         <CommandGroup>
                           {filteredCategoryOptionsForModal.map((categoryName) => (
