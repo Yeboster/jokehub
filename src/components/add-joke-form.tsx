@@ -125,7 +125,7 @@ const AddJokeForm: FC<AddJokeFormProps> = ({ onAddJoke, aiGeneratedText, aiGener
           <div className="mb-3 p-2.5 rounded-md bg-yellow-50 border border-yellow-200 text-yellow-700 flex items-center text-sm">
             <ShieldAlert className="mr-2 h-4 w-4 flex-shrink-0" />
             <div>
-              Please <Link href="/auth?redirect=/" className="font-semibold underline hover:text-yellow-800">log in or sign up</Link> to add jokes.
+              Please <Link href="/auth?redirect=/jokes" className="font-semibold underline hover:text-yellow-800">log in or sign up</Link> to add jokes. {/* Updated redirect */}
             </div>
           </div>
         )}
@@ -191,7 +191,7 @@ const AddJokeForm: FC<AddJokeFormProps> = ({ onAddJoke, aiGeneratedText, aiGener
                                       key={option.value} 
                                       value={option.label} 
                                       onSelect={() => {
-                                        field.onChange(option.value); 
+                                        form.setValue('category', option.value, {shouldValidate: true}); // Use form.setValue
                                         setCategorySearch(option.value); 
                                         setCategoryPopoverOpen(false);
                                       }}
@@ -262,4 +262,3 @@ const AddJokeForm: FC<AddJokeFormProps> = ({ onAddJoke, aiGeneratedText, aiGener
 };
 
 export default AddJokeForm;
-

@@ -2,7 +2,7 @@
 "use client";
 
 import Link from 'next/link';
-import { Home, Settings, LogIn, LogOut, UserCircle, Loader2 } from 'lucide-react';
+import { Home, Settings, LogIn, LogOut, UserCircle, Loader2, ListChecks } from 'lucide-react'; // Added ListChecks
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,7 @@ const Navbar = () => {
 
   const navItems = [
     { href: '/', label: 'Home', icon: Home, public: true },
+    { href: '/jokes', label: 'Jokes', icon: ListChecks, public: true }, // New "Jokes" link
     { href: '/manage', label: 'Manage Jokes', icon: Settings, public: false },
   ];
 
@@ -81,12 +82,16 @@ const Navbar = () => {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/auth" className="flex items-center">
-                <LogIn className="mr-0 h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Login</span>
-              </Link>
-            </Button>
+            // For the landing page, login might be part of the page content,
+            // but keeping it in navbar is also fine for consistency.
+            pathname !== '/auth' && ( // Avoid showing login button on login page itself
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/auth" className="flex items-center">
+                  <LogIn className="mr-0 h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Login</span>
+                </Link>
+              </Button>
+            )
           )}
         </div>
       </div>

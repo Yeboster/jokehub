@@ -21,7 +21,7 @@ function AuthPageComponent() {
   const searchParams = useSearchParams(); // This hook necessitates Suspense
   const { toast } = useToast();
 
-  const redirectPath = searchParams.get('redirect') || '/';
+  const redirectPath = searchParams.get('redirect') || '/jokes'; // Updated redirect
 
   useEffect(() => {
     if (!authLoading && user) {

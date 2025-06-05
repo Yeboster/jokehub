@@ -110,7 +110,7 @@ export default function EditJokePage() {
 
      if (data.text === joke.text && data.category === joke.category && data.funnyRate === joke.funnyRate) {
          toast({ title: 'No Changes', description: 'No changes were made to the joke.' });
-         router.push('/');
+         router.push('/jokes'); // Updated redirect
          return;
      }
 
@@ -119,7 +119,7 @@ export default function EditJokePage() {
       // The category name is already trimmed by the schema validation
       await updateJoke(joke.id, data); // updateJoke handles category creation via _ensureCategoryExistsAndAdd
       toast({ title: 'Success', description: 'Joke updated successfully!' });
-      router.push('/');
+      router.push('/jokes'); // Updated redirect
     } catch (error) {
       console.error("Failed to update joke:", error);
        if (!(error instanceof Error && error.message.includes("Category"))) {
@@ -198,8 +198,8 @@ export default function EditJokePage() {
                              <ShieldAlert className="mr-2 h-5 w-5 flex-shrink-0" />
                              <p>{fetchError}</p>
                         </div>
-                        <Button variant="outline" onClick={() => router.push('/')}>
-                            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Home
+                        <Button variant="outline" onClick={() => router.push('/jokes')}> {/* Updated redirect */}
+                            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Jokes
                         </Button>
                     </CardContent>
                  </Card>
@@ -249,6 +249,7 @@ export default function EditJokePage() {
                               className={cn("w-full justify-between", !field.value && "text-muted-foreground")}
                               disabled={isFormDisabled || loadingCategories}
                             >
+                             <span className="truncate">
                               {loadingCategories
                                ? "Loading categories..."
                                : field.value
@@ -256,6 +257,7 @@ export default function EditJokePage() {
                                      (name) => name.toLowerCase() === field.value.toLowerCase() // Case-insensitive find
                                    ) || field.value // Show typed value if not exact match
                                  : "Select or type category..."}
+                             </span>
                               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </Button>
                           </FormControl>
@@ -277,7 +279,7 @@ export default function EditJokePage() {
                                       key={option.value} // Use value for key
                                       value={option.label} // Important: value must be unique, use label here for display/selection
                                       onSelect={() => {
-                                        field.onChange(option.value); // Use the actual value (could be existing or new)
+                                        form.setValue('category', option.value, { shouldValidate: true }); // Use form.setValue
                                         setCategorySearch(option.value); // Update search to reflect selection
                                         setCategoryPopoverOpen(false);
                                       }}
@@ -330,7 +332,7 @@ export default function EditJokePage() {
                 )}
               />
               <div className="flex flex-col sm:flex-row gap-2 justify-end">
-                 <Button type="button" variant="outline" onClick={() => router.push('/')} disabled={isSubmitting}>
+                 <Button type="button" variant="outline" onClick={() => router.push('/jokes')} disabled={isSubmitting}> {/* Updated redirect */}
                     <ArrowLeft className="mr-2 h-4 w-4" /> Cancel
                  </Button>
                  <Button type="submit" disabled={isFormDisabled}>
