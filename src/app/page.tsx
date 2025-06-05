@@ -54,19 +54,21 @@ export default function LandingPage() {
         selectedCategories: [],
         filterFunnyRate: -1,
         showOnlyUsed: false,
-        scope: user ? 'user' : 'public',
+        scope: user ? 'user' : 'public', // Fetch user's jokes if logged in, else public
       };
       loadJokesWithFilters(filters);
     }
   }, [user, authLoading, loadJokesWithFilters]);
 
   useEffect(() => {
+    // If user is logged in, show their jokes (up to 3).
+    // If logged out, show public jokes (up to 3 from context, or hardcoded if context is empty/loading).
     if (user) {
       setDisplayedJokes((jokes || []).slice(0, 3));
     } else {
-      if (jokes && jokes.length > 0) {
+      if (jokes && jokes.length > 0) { // jokes from context (these would be public if no user)
         setDisplayedJokes(jokes.slice(0,3));
-      } else if (!loadingInitialJokes) {
+      } else if (!loadingInitialJokes) { // If context is done loading and still no jokes (e.g. new app)
          setDisplayedJokes(hardcodedJokes);
       }
     }
@@ -120,6 +122,7 @@ export default function LandingPage() {
     }
     await addJoke(data);
     setIsAddJokeModalOpen(false);
+     // Re-fetch user's jokes for the landing page display after adding a new one
      if (user) {
       const filters: FilterParams = { selectedCategories: [], filterFunnyRate: -1, showOnlyUsed: false, scope: 'user' };
       loadJokesWithFilters(filters);
@@ -156,7 +159,7 @@ export default function LandingPage() {
           </div>
         ) : (
           <p className="text-muted-foreground">
-            {user ? "You haven't added any jokes yet. Go to 'All Jokes' to add some!" : "No sample jokes to display right now."}
+            {user ? "You haven't added any jokes yet. Go to 'Jokes' page to add some!" : "No sample jokes to display right now."}
           </p>
         )}
       </section>
@@ -233,11 +236,11 @@ export default function LandingPage() {
             </Dialog>
         )}
 
-        {/* "View My Jokes" button now links to /jokes where user can select "My Jokes" view */}
+        {/* "View My Jokes" button still links to /jokes, user will use filter there */}
         {user && (
            <Button size="lg" variant="outline" asChild>
             <Link href="/jokes">
-              View My Collection
+              View My Collection {/* This now takes them to /jokes where they can filter */}
             </Link>
           </Button>
         )}
@@ -259,3 +262,5 @@ export default function LandingPage() {
     </div>
   );
 }
+
+    

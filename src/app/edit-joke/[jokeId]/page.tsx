@@ -113,7 +113,7 @@ export default function EditJokePage() {
 
      if (data.text === joke.text && data.category === joke.category && data.funnyRate === joke.funnyRate) {
          toast({ title: 'No Changes', description: 'No changes were made to the joke.' });
-         router.push('/jokes');
+         router.push('/jokes'); // Redirect to the main jokes page
          return;
      }
 
@@ -121,7 +121,7 @@ export default function EditJokePage() {
     try {
       await updateJoke(joke.id, data);
       toast({ title: 'Success', description: 'Joke updated successfully!' });
-      router.push('/jokes');
+      router.push('/jokes'); // Redirect to the main jokes page
     } catch (error) {
       console.error("Failed to update joke:", error);
        if (!(error instanceof Error && (error.message.includes("Category") || error.message.includes("permission denied")))) {
@@ -136,11 +136,8 @@ export default function EditJokePage() {
 
   const categoryNames = useMemo(() => {
     if (!categories || !user) return [];
-    // For editing, show categories created by this user to make it easier to re-categorize among their own.
-    // Or show all global categories if that's preferred. AddJokeForm uses global for its popover.
-    // For consistency with AddJokeForm, let's show all global categories.
-    // The _ensureCategoryExistsAndAdd in context correctly scopes any new/selected category to the user.
-    return Array.isArray(categories) ? categories.map(cat => cat.name).sort() : [];
+    // For editing, show categories created by this user.
+    return Array.isArray(categories) ? categories.filter(cat => cat.userId === user.uid).map(cat => cat.name).sort() : [];
   }, [categories, user]);
 
 
@@ -287,3 +284,5 @@ export default function EditJokePage() {
     </div>
   );
 }
+
+    

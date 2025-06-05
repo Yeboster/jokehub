@@ -2,7 +2,7 @@
 "use client";
 
 import Link from 'next/link';
-import { Home, Settings, LogIn, LogOut, UserCircle, Loader2, ListChecks } from 'lucide-react';
+import { Home, Settings, LogIn, LogOut, UserCircle, Loader2, ListChecks } from 'lucide-react'; // Settings might be 'Manage'
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -22,8 +22,8 @@ const Navbar = () => {
 
   const navItems = [
     { href: '/', label: 'Home', icon: Home, public: true },
-    { href: '/jokes', label: 'All Jokes', icon: ListChecks, public: true },
-    { href: '/manage', label: 'Manage Jokes', icon: Settings, public: false, requiresAuth: true },
+    { href: '/jokes', label: 'Jokes', icon: ListChecks, public: true }, // Changed label from "All Jokes" to "Jokes"
+    { href: '/manage', label: 'Manage', icon: Settings, public: false, requiresAuth: true }, // "Manage Jokes" can be "Manage"
   ];
 
   if (loading) {
@@ -98,3 +98,5 @@ const Navbar = () => {
 };
 
 export default Navbar;
+
+    
