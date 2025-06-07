@@ -54,21 +54,19 @@ export default function LandingPage() {
         selectedCategories: [],
         filterFunnyRate: -1,
         showOnlyUsed: false,
-        scope: user ? 'user' : 'public', // Fetch user's jokes if logged in, else public
+        scope: user ? 'user' : 'public', 
       };
       loadJokesWithFilters(filters);
     }
   }, [user, authLoading, loadJokesWithFilters]);
 
   useEffect(() => {
-    // If user is logged in, show their jokes (up to 3).
-    // If logged out, show public jokes (up to 3 from context, or hardcoded if context is empty/loading).
     if (user) {
       setDisplayedJokes((jokes || []).slice(0, 3));
     } else {
-      if (jokes && jokes.length > 0) { // jokes from context (these would be public if no user)
+      if (jokes && jokes.length > 0) { 
         setDisplayedJokes(jokes.slice(0,3));
-      } else if (!loadingInitialJokes) { // If context is done loading and still no jokes (e.g. new app)
+      } else if (!loadingInitialJokes) { 
          setDisplayedJokes(hardcodedJokes);
       }
     }
@@ -122,7 +120,6 @@ export default function LandingPage() {
     }
     await addJoke(data);
     setIsAddJokeModalOpen(false);
-     // Re-fetch user's jokes for the landing page display after adding a new one
      if (user) {
       const filters: FilterParams = { selectedCategories: [], filterFunnyRate: -1, showOnlyUsed: false, scope: 'user' };
       loadJokesWithFilters(filters);
@@ -236,11 +233,10 @@ export default function LandingPage() {
             </Dialog>
         )}
 
-        {/* "View My Jokes" button still links to /jokes, user will use filter there */}
         {user && (
            <Button size="lg" variant="outline" asChild>
             <Link href="/jokes">
-              View My Collection {/* This now takes them to /jokes where they can filter */}
+              View My Collection 
             </Link>
           </Button>
         )}

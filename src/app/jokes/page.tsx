@@ -69,12 +69,10 @@ export default function JokesPage() {
       currentActiveScope = 'public';
       setActiveFilters(prev => ({ ...prev, scope: 'public', selectedCategories: [] }));
     }
-    // Initialize tempScope with activeFilters.scope when component mounts or activeFilters.scope changes
-    // This ensures the modal starts with the correct scope selected.
     setTempScope(currentActiveScope); 
     loadJokesWithFilters({ ...activeFilters, scope: currentActiveScope });
 
-  }, [authLoading, user, activeFilters, loadJokesWithFilters]);
+  }, [authLoading, user, activeFilters.scope, loadJokesWithFilters]);
 
 
   const modalCategoryNames = useMemo(() => {
@@ -97,7 +95,6 @@ export default function JokesPage() {
   const jokesToDisplay = useMemo(() => jokes ?? [], [jokes]);
 
   const handleOpenFilterModal = () => {
-    // When opening the modal, ensure its temporary state reflects the currently active filters.
     setTempScope(activeFilters.scope);
     const validCategoriesForCurrentActiveScope = activeScopeCategoryNames;
     setTempSelectedCategories(activeFilters.selectedCategories.filter(cat => validCategoriesForCurrentActiveScope.includes(cat)));
@@ -108,7 +105,7 @@ export default function JokesPage() {
   };
 
   const handleApplyFilters = () => {
-    const validCategoriesForNewScope = modalCategoryNames; // Uses tempScope due to memo dependency
+    const validCategoriesForNewScope = modalCategoryNames; 
     const validatedSelectedCategories = tempSelectedCategories.filter(cat => validCategoriesForNewScope.includes(cat));
 
     const newFilters: FilterParams = {
@@ -122,7 +119,6 @@ export default function JokesPage() {
   };
 
   const handleClearFilters = () => {
-    // "Clear All" now resets scope to 'public' and clears other filters.
     const defaultPageFilters: FilterParams = {
       scope: 'public', 
       selectedCategories: [],
@@ -132,7 +128,6 @@ export default function JokesPage() {
     
     setActiveFilters(defaultPageFilters);
     
-    // Also reset the temporary states for the modal to reflect the cleared state
     setTempScope('public'); 
     setTempSelectedCategories([]);
     setTempFilterFunnyRate(-1);
@@ -244,7 +239,6 @@ export default function JokesPage() {
       <div className="mb-6 p-4 flex flex-wrap items-center gap-x-4 gap-y-3 border-b pb-6">
         <Dialog open={isFilterModalOpen} onOpenChange={(isOpen) => {
           if (!isOpen) {
-            // If modal is closed without applying, reset temp states to active ones
             setTempScope(activeFilters.scope);
             const validCategoriesForCurrentActiveScope = activeScopeCategoryNames;
             setTempSelectedCategories(activeFilters.selectedCategories.filter(cat => validCategoriesForCurrentActiveScope.includes(cat)));
@@ -282,7 +276,6 @@ export default function JokesPage() {
                       setTempScope('public'); 
                     } else {
                       setTempScope(value);
-                      // When scope changes in modal, clear selected categories as they might not be valid for the new scope
                       setTempSelectedCategories([]);
                       setCategorySearch('');
                     }
@@ -537,3 +530,5 @@ export default function JokesPage() {
     </div>
   );
 }
+
+    
