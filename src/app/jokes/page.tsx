@@ -207,7 +207,7 @@ export default function JokesPage() {
   const pageTitle = activeFilters.scope === 'user' ? "My Joke Collection" : "All Jokes Feed";
   const pageDescription = activeFilters.scope === 'user'
     ? "Manage and filter your personal joke collection."
-    : "Browse, filter, and enjoy jokes from the community.";
+    : "Browse, filter, and enjoy jokes from the community. Add your own too!";
 
   if (authLoading) {
     return (
@@ -232,11 +232,11 @@ export default function JokesPage() {
       <header className="mb-8 text-center">
         <h1 className="text-4xl font-bold tracking-tight text-primary sm:text-5xl">{pageTitle}</h1>
         <p className="mt-3 text-lg text-muted-foreground sm:text-xl">
-          {pageDescription} {user && activeFilters.scope === 'public' ? "Add your own too!" : !user && activeFilters.scope === 'public' ? "Log in to add yours!" : ""}
+          {pageDescription}
         </p>
       </header>
 
-      <div className="mb-6 p-4 flex flex-wrap items-center gap-x-4 gap-y-3 border-b pb-6">
+      <div className="mb-6 p-4 flex items-center gap-x-4 gap-y-3 border-b pb-6">
         <Dialog open={isFilterModalOpen} onOpenChange={(isOpen) => {
           if (!isOpen) {
             setTempScope(activeFilters.scope);
@@ -411,79 +411,6 @@ export default function JokesPage() {
           </DialogContent>
         </Dialog>
 
-        {user && (
-            <Dialog open={isAddJokeModalOpen} onOpenChange={setIsAddJokeModalOpen}>
-            <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="h-9">
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Add New Joke
-                </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                <DialogTitle>Add a New Joke</DialogTitle>
-                <DialogDescription>
-                    Create a joke manually or let AI generate one for you. It will be added to your collection.
-                </DialogDescription>
-                </DialogHeader>
-                <ScrollArea className="max-h-[calc(80vh-150px)] md:max-h-[calc(70vh-120px)] pr-3">
-                <div className="py-2 space-y-2">
-                    <div className="space-y-1.5 p-2.5 border rounded-md shadow-sm bg-muted/30">
-                    <h3 className="text-xs font-semibold flex items-center">
-                        <Wand2 className="mr-1.5 h-3.5 w-3.5 text-primary" />
-                        Generate with AI
-                    </h3>
-                    <div>
-                        <Label htmlFor="ai-topic-hint-modal" className="text-xs">Topic Hint (Optional)</Label>
-                        <Input
-                            id="ai-topic-hint-modal"
-                            type="text"
-                            placeholder="e.g., animals, space, food"
-                            value={aiTopicHint || ''}
-                            onChange={(e) => setAiTopicHint(e.target.value)}
-                            disabled={isGeneratingJoke || !user}
-                            className="mt-1 h-8 text-xs"
-                        />
-                    </div>
-                    <Button
-                        onClick={handleGenerateJokeInModal}
-                        disabled={isGeneratingJoke || !user}
-                        className="w-full"
-                        size="sm"
-                    >
-                        {isGeneratingJoke ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                            <Wand2 className="mr-2 h-4 w-4" />
-                        )}
-                        {isGeneratingJoke ? 'Generating...' : (aiGeneratedText ? 'Generate Another' : 'Generate Joke')}
-                    </Button>
-                    {aiGeneratedText && (
-                        <p className="text-xs text-muted-foreground pt-1">
-                        Tip: Click generate again. Current text used to encourage variety.
-                        </p>
-                    )}
-                    </div>
-                    <AddJokeForm
-                        onAddJoke={handleAddJokeFromFormInModal}
-                        aiGeneratedText={aiGeneratedText}
-                        aiGeneratedCategory={aiGeneratedCategory}
-                        onAiJokeSubmitted={handleAiJokeSubmittedFromModal}
-                    />
-                </div>
-                </ScrollArea>
-            </DialogContent>
-            </Dialog>
-        )}
-        {!user && (
-             <Button variant="outline" size="sm" asChild className="h-9">
-                <Link href="/auth?redirect=/jokes">
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Log in to Add Jokes
-                </Link>
-            </Button>
-        )}
-
         <div className="flex flex-wrap items-center gap-2 flex-grow min-h-[36px]">
           {activeFilters.scope === 'user' && user && (
             <Badge variant="secondary" className="py-1 px-2 bg-primary/10 text-primary border-primary/30">Showing: My Jokes</Badge>
@@ -498,12 +425,87 @@ export default function JokesPage() {
             <Badge variant="secondary" className="py-1 px-2">Status: Used Only</Badge>
           )}
         </div>
+        
+        <div className="flex items-center ml-auto"> {/* Container for Add Joke and Clear Filters */}
+            {user && (
+                <Dialog open={isAddJokeModalOpen} onOpenChange={setIsAddJokeModalOpen}>
+                <DialogTrigger asChild>
+                    <Button variant="default" size="sm" className="h-9"> {/* Changed to default variant */}
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Add New Joke
+                    </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                    <DialogTitle>Add a New Joke</DialogTitle>
+                    <DialogDescription>
+                        Create a joke manually or let AI generate one for you. It will be added to your collection.
+                    </DialogDescription>
+                    </DialogHeader>
+                    <ScrollArea className="max-h-[calc(80vh-150px)] md:max-h-[calc(70vh-120px)] pr-3">
+                    <div className="py-2 space-y-2">
+                        <div className="space-y-1.5 p-2.5 border rounded-md shadow-sm bg-muted/30">
+                        <h3 className="text-xs font-semibold flex items-center">
+                            <Wand2 className="mr-1.5 h-3.5 w-3.5 text-primary" />
+                            Generate with AI
+                        </h3>
+                        <div>
+                            <Label htmlFor="ai-topic-hint-modal" className="text-xs">Topic Hint (Optional)</Label>
+                            <Input
+                                id="ai-topic-hint-modal"
+                                type="text"
+                                placeholder="e.g., animals, space, food"
+                                value={aiTopicHint || ''}
+                                onChange={(e) => setAiTopicHint(e.target.value)}
+                                disabled={isGeneratingJoke || !user}
+                                className="mt-1 h-8 text-xs"
+                            />
+                        </div>
+                        <Button
+                            onClick={handleGenerateJokeInModal}
+                            disabled={isGeneratingJoke || !user}
+                            className="w-full"
+                            size="sm"
+                        >
+                            {isGeneratingJoke ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                                <Wand2 className="mr-2 h-4 w-4" />
+                            )}
+                            {isGeneratingJoke ? 'Generating...' : (aiGeneratedText ? 'Generate Another' : 'Generate Joke')}
+                        </Button>
+                        {aiGeneratedText && (
+                            <p className="text-xs text-muted-foreground pt-1">
+                            Tip: Click generate again. Current text used to encourage variety.
+                            </p>
+                        )}
+                        </div>
+                        <AddJokeForm
+                            onAddJoke={handleAddJokeFromFormInModal}
+                            aiGeneratedText={aiGeneratedText}
+                            aiGeneratedCategory={aiGeneratedCategory}
+                            onAiJokeSubmitted={handleAiJokeSubmittedFromModal}
+                        />
+                    </div>
+                    </ScrollArea>
+                </DialogContent>
+                </Dialog>
+            )}
+            {!user && (
+                <Button variant="default" size="sm" asChild className="h-9"> {/* Changed to default variant */}
+                    <Link href="/auth?redirect=/jokes">
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Log in to Add Jokes
+                    </Link>
+                </Button>
+            )}
 
-        {hasActiveAppliedFilters && (
-            <Button variant="ghost" onClick={handleClearFilters} className="ml-auto text-sm p-2 h-auto self-center">
-              <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Clear All
-            </Button>
-        )}
+            {hasActiveAppliedFilters && (
+                <Button variant="ghost" onClick={handleClearFilters} className="ml-2 text-sm p-2 h-auto self-center"> {/* Added ml-2 for spacing */}
+                <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Clear All
+                </Button>
+            )}
+        </div>
       </div>
 
       <JokeList jokes={jokesToDisplay} />
@@ -530,5 +532,3 @@ export default function JokesPage() {
     </div>
   );
 }
-
-    

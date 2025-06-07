@@ -30,8 +30,7 @@ const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
   const isOwner = currentUser?.uid === joke.userId;
 
   const handleRatingChange = async (newRating: number) => {
-    if (!isOwner) { // Optionally, allow anyone to rate, or restrict to owner
-        // For now, only owner can change the official rating. Public could be a different feature.
+    if (!isOwner) { 
         return; 
     }
     if (joke.funnyRate === newRating) return;
@@ -41,24 +40,60 @@ const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
   };
 
   const handleToggleUsed = async () => {
-    if (!isOwner) return; // Only owner can toggle used status
+    if (!isOwner) return; 
     setIsTogglingUsed(true);
     await toggleUsed(joke.id, joke.used);
     setIsTogglingUsed(false);
   };
 
   return (
-    <Card className={cn("flex flex-col shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-lg overflow-hidden", joke.used && isOwner ? "bg-muted/30 border-primary/20" : "bg-card")}>
+    <Card className={cn(
+        "flex flex-col shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-lg overflow-hidden border-primary/20", 
+        joke.used && isOwner ? "bg-muted/30" : "bg-card"
+    )}>
       <CardContent className="p-5 flex-grow">
         <p className="text-sm text-foreground leading-relaxed">{joke.text}</p>
-      </CardContent>
-      <CardFooter className="bg-muted/50 p-4 border-t border-border/50 flex flex-col gap-2">
-        <div className="flex justify-between items-center w-full">
-          <Badge variant="secondary" className="flex items-center gap-1.5 py-1 px-2.5 text-xs">
-            <Tag className="h-3.5 w-3.5" />
+        <Badge variant="secondary" className="bg-accent text-accent-foreground flex items-center gap-1.5 py-1 px-2.5 text-xs mt-4">
+            {/* <Tag className="h-3.5 w-3.5" /> // Icon removed from badge as per mockup */}
             {joke.category}
-          </Badge>
-          <div className="flex items-center gap-1.5">
+        </Badge>
+      </CardContent>
+      <CardFooter className="p-4 border-t border-border/50 flex items-center justify-between">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <div className="flex items-center gap-1">
+                <CalendarDays className="h-4 w-4" />
+                {format(joke.dateAdded, 'PP')}
+            </div>
+            {isOwner && currentUser?.email && ( 
+                <TooltipProvider delayDuration={200}>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                    <div className="flex items-center gap-1 cursor-default">
+                        <UserCircle className="h-4 w-4" />
+                        <span className="truncate max-w-[100px] sm:max-w-[120px]"> 
+                        You
+                        </span>
+                    </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                    <p>Posted by: You ({currentUser.email})</p>
+                    </TooltipContent>
+                </Tooltip>
+                </TooltipProvider>
+            )}
+        </div>
+
+        <div className="flex items-center gap-1">
+            <StarRating
+                rating={joke.funnyRate}
+                onRatingChange={isOwner ? handleRatingChange : undefined}
+                readOnly={!isOwner}
+                size={16} // Slightly smaller stars to fit
+                disabled={isRating || isTogglingUsed || !isOwner}
+                starClassName={cn(isOwner ? "text-primary" : "text-muted-foreground")} // Active stars primary, inactive muted
+            />
+            {isOwner && isRating && <Loader2 className="ml-1 h-3 w-3 animate-spin text-primary" />}
+            
             {isOwner && (
               <TooltipProvider delayDuration={300}>
                 <Tooltip>
@@ -66,7 +101,7 @@ const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8"
+                      className="h-7 w-7"
                       onClick={handleToggleUsed}
                       disabled={isTogglingUsed || isRating || !isOwner}
                       aria-label={joke.used ? 'Mark as unused' : 'Mark as used'}
@@ -91,7 +126,7 @@ const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
               <TooltipProvider delayDuration={300}>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" asChild disabled={isRating || isTogglingUsed || !isOwner}>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" asChild disabled={isRating || isTogglingUsed || !isOwner}>
                       <Link href={`/edit-joke/${joke.id}`}>
                         <Pencil className="h-4 w-4 text-muted-foreground hover:text-primary" />
                         <span className="sr-only">Edit Joke</span>
@@ -104,43 +139,6 @@ const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
                 </Tooltip>
               </TooltipProvider>
             )}
-          </div>
-        </div>
-
-        <div className="flex items-center w-full">
-          <StarRating
-            rating={joke.funnyRate}
-            onRatingChange={isOwner ? handleRatingChange : undefined} // Only allow owner to change rating
-            readOnly={!isOwner} // Make read-only if not owner
-            size={18}
-            disabled={isRating || isTogglingUsed || !isOwner}
-            starClassName="text-accent"
-          />
-          {isOwner && isRating && <Loader2 className="ml-2 h-4 w-4 animate-spin text-primary" />}
-        </div>
-        
-        <div className="flex justify-between items-center w-full text-xs text-muted-foreground pt-1">
-          <div className="flex items-center gap-1">
-            <CalendarDays className="h-3.5 w-3.5" />
-            {format(joke.dateAdded, 'PP')}
-          </div>
-          {isOwner && currentUser?.email && ( // Only show email if current user is the owner
-            <TooltipProvider delayDuration={200}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="flex items-center gap-1 cursor-default">
-                    <UserCircle className="h-3.5 w-3.5" />
-                    <span className="truncate max-w-[100px] sm:max-w-[120px]"> 
-                      You
-                    </span>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Posted by: You ({currentUser.email})</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
         </div>
       </CardFooter>
     </Card>
