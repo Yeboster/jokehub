@@ -52,11 +52,11 @@ const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
         joke.used && isOwner ? "bg-muted/30" : "bg-card"
     )}>
       <CardContent className="p-5 flex-grow">
-        <div className="relative">
-          <p className="text-sm text-foreground leading-relaxed">{joke.text}</p>
+        <div className="relative h-full"> {/* Ensure relative container takes full height of content area */}
+          <p className="text-sm text-foreground leading-relaxed pb-8">{joke.text}</p> {/* Added padding-bottom to avoid overlap */}
           <Badge
             variant="secondary" 
-            className="absolute top-0 right-0 bg-accent text-accent-foreground py-0.5 px-2 text-[11px] font-semibold rounded-md"
+            className="absolute bottom-0 left-0 bg-accent text-accent-foreground py-0.5 px-2 text-[11px] font-semibold rounded-md"
           >
             {joke.category}
           </Badge>
@@ -150,3 +150,4 @@ const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
 };
 
 export default JokeListItem;
+
