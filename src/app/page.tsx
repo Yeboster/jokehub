@@ -19,9 +19,9 @@ import { useToast } from '@/hooks/use-toast';
 
 
 const StaticJokeDisplay: React.FC<{ text: string; category: string }> = ({ text, category }) => (
-  <Card className="bg-card shadow-lg rounded-lg text-left">
-    <CardHeader className="pb-3 pt-5 px-5">
-      <CardTitle className="text-lg font-medium text-primary">{category}</CardTitle>
+  <Card className="bg-card shadow-md rounded-lg text-left hover:shadow-xl transition-shadow duration-300">
+    <CardHeader className="pb-2 pt-4 px-5">
+      <CardTitle className="text-md font-semibold text-primary text-center">{category}</CardTitle>
     </CardHeader>
     <CardContent className="px-5 pb-5">
       <p className="text-sm text-foreground leading-relaxed">{text}</p>
@@ -128,20 +128,20 @@ export default function LandingPage() {
 
 
   return (
-    <div className="container mx-auto px-4 py-12 text-center">
-      <header className="mb-16">
-        <Laugh className="mx-auto h-20 w-20 text-primary mb-6" />
-        <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-primary mb-4">
+    <div className="container mx-auto px-4 py-10 sm:py-16 text-center">
+      <header className="mb-12 sm:mb-16">
+        <Laugh className="mx-auto h-16 w-16 sm:h-20 sm:w-20 text-primary mb-5" />
+        <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-primary mb-3">
           Welcome to Joke Hub!
         </h1>
-        <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
+        <p className="text-md sm:text-lg text-muted-foreground max-w-xl md:max-w-2xl mx-auto">
           Your personal space to collect, create, and cherish every chuckle. Dive in and let the laughter begin!
         </p>
       </header>
 
-      <section className="mb-16">
-        <h2 className="text-3xl font-bold text-center text-primary mb-10">
-          {user ? "Your Latest Laughs" : "A Taste of Humor"}
+      <section className="mb-12 sm:mb-16">
+        <h2 className="text-2xl sm:text-3xl font-bold text-center text-primary mb-8 sm:mb-10">
+          {user ? "Your Latest Laughs" : "Your Latest Laughs"} 
         </h2>
         {isLoading ? (
           <div className="flex justify-center items-center min-h-[150px]">
@@ -149,7 +149,7 @@ export default function LandingPage() {
             <p className="ml-2 text-muted-foreground">Loading jokes...</p>
           </div>
         ) : displayedJokes.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5 md:gap-6 max-w-4xl lg:max-w-5xl mx-auto">
             {displayedJokes.map((joke) => (
               <StaticJokeDisplay key={joke.id} text={joke.text} category={joke.category} />
             ))}
@@ -161,8 +161,8 @@ export default function LandingPage() {
         )}
       </section>
 
-      <section className="flex flex-col sm:flex-row justify-center items-center gap-4 mt-12">
-        <Button size="lg" asChild className="bg-accent hover:bg-accent/90 text-accent-foreground">
+      <section className="flex flex-col sm:flex-row justify-center items-center gap-3 sm:gap-4 mt-10 sm:mt-12">
+        <Button size="lg" asChild className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-3 rounded-lg">
           <Link href="/jokes">
             Explore All Jokes <ArrowRight className="ml-2 h-5 w-5" />
           </Link>
@@ -171,7 +171,7 @@ export default function LandingPage() {
         {user && (
            <Dialog open={isAddJokeModalOpen} onOpenChange={setIsAddJokeModalOpen}>
             <DialogTrigger asChild>
-                <Button variant="outline" size="lg">
+                <Button size="lg" className="bg-accent hover:bg-accent/90 text-accent-foreground px-6 py-3 rounded-lg">
                 <PlusCircle className="mr-2 h-5 w-5" />
                 Add New Joke
                 </Button>
@@ -234,7 +234,7 @@ export default function LandingPage() {
         )}
 
         {user && (
-           <Button size="lg" variant="outline" asChild>
+           <Button size="lg" asChild className="bg-accent hover:bg-accent/90 text-accent-foreground px-6 py-3 rounded-lg">
             <Link href="/jokes">
               View My Collection 
             </Link>
@@ -242,7 +242,7 @@ export default function LandingPage() {
         )}
 
         {!user && !authLoading && (
-          <Button size="lg" variant="outline" asChild>
+          <Button size="lg" asChild className="bg-accent hover:bg-accent/90 text-accent-foreground px-6 py-3 rounded-lg">
             <Link href="/auth?redirect=/jokes">
               Log In or Sign Up
             </Link>
@@ -250,8 +250,8 @@ export default function LandingPage() {
         )}
       </section>
 
-      <footer className="mt-20 pt-10 border-t border-border/50">
-        <p className="text-sm text-muted-foreground">
+      <footer className="mt-16 sm:mt-20 pt-8 sm:pt-10 border-t border-border/30">
+        <p className="text-xs sm:text-sm text-muted-foreground">
           &copy; {new Date().getFullYear()} Joke Hub. Keep laughing!
         </p>
       </footer>
