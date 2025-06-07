@@ -19,12 +19,12 @@ import { useToast } from '@/hooks/use-toast';
 
 
 const StaticJokeDisplay: React.FC<{ text: string; category: string }> = ({ text, category }) => (
-  <Card className="bg-muted/30 shadow-md">
-    <CardHeader className="pb-2 pt-4">
-      <CardTitle className="text-base font-semibold">{category}</CardTitle>
+  <Card className="bg-card shadow-lg rounded-lg text-left">
+    <CardHeader className="pb-3 pt-5 px-5">
+      <CardTitle className="text-lg font-medium text-primary">{category}</CardTitle>
     </CardHeader>
-    <CardContent>
-      <p className="text-sm text-foreground/80">{text}</p>
+    <CardContent className="px-5 pb-5">
+      <p className="text-sm text-foreground leading-relaxed">{text}</p>
     </CardContent>
   </Card>
 );
@@ -128,9 +128,9 @@ export default function LandingPage() {
 
 
   return (
-    <div className="container mx-auto px-4 py-8 md:py-16 text-center">
-      <header className="mb-12">
-        <Laugh className="mx-auto h-16 w-16 text-primary mb-4" />
+    <div className="container mx-auto px-4 py-12 text-center">
+      <header className="mb-16">
+        <Laugh className="mx-auto h-20 w-20 text-primary mb-6" />
         <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-primary mb-4">
           Welcome to Joke Hub!
         </h1>
@@ -139,8 +139,8 @@ export default function LandingPage() {
         </p>
       </header>
 
-      <section className="mb-12">
-        <h2 className="text-2xl md:text-3xl font-semibold text-primary mb-6">
+      <section className="mb-16">
+        <h2 className="text-3xl font-bold text-center text-primary mb-10">
           {user ? "Your Latest Laughs" : "A Taste of Humor"}
         </h2>
         {isLoading ? (
@@ -149,7 +149,7 @@ export default function LandingPage() {
             <p className="ml-2 text-muted-foreground">Loading jokes...</p>
           </div>
         ) : displayedJokes.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto text-left">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
             {displayedJokes.map((joke) => (
               <StaticJokeDisplay key={joke.id} text={joke.text} category={joke.category} />
             ))}
@@ -161,7 +161,7 @@ export default function LandingPage() {
         )}
       </section>
 
-      <section className="space-y-4 md:space-y-0 md:flex md:items-center md:justify-center md:space-x-4">
+      <section className="flex flex-col sm:flex-row justify-center items-center gap-4 mt-12">
         <Button size="lg" asChild className="bg-accent hover:bg-accent/90 text-accent-foreground">
           <Link href="/jokes">
             Explore All Jokes <ArrowRight className="ml-2 h-5 w-5" />
@@ -250,7 +250,7 @@ export default function LandingPage() {
         )}
       </section>
 
-      <footer className="mt-16 pt-8 border-t border-border/50">
+      <footer className="mt-20 pt-10 border-t border-border/50">
         <p className="text-sm text-muted-foreground">
           &copy; {new Date().getFullYear()} Joke Hub. Keep laughing!
         </p>
@@ -258,5 +258,3 @@ export default function LandingPage() {
     </div>
   );
 }
-
-    

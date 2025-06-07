@@ -2,7 +2,7 @@
 "use client";
 
 import Link from 'next/link';
-import { Home, Settings, LogIn, LogOut, UserCircle, Loader2, ListChecks } from 'lucide-react'; // Settings might be 'Manage'
+import { Home, Settings, LogIn, LogOut, UserCircle, Loader2, ListChecks } from 'lucide-react'; 
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -22,8 +22,8 @@ const Navbar = () => {
 
   const navItems = [
     { href: '/', label: 'Home', icon: Home, public: true },
-    { href: '/jokes', label: 'Jokes', icon: ListChecks, public: true }, // Changed label from "All Jokes" to "Jokes"
-    { href: '/manage', label: 'Manage', icon: Settings, public: false, requiresAuth: true }, // "Manage Jokes" can be "Manage"
+    { href: '/jokes', label: 'Jokes', icon: ListChecks, public: true },
+    { href: '/manage', label: 'Manage', icon: Settings, public: false, requiresAuth: true },
   ];
 
   if (loading) {
@@ -47,7 +47,7 @@ const Navbar = () => {
         <Link href="/" className="text-xl font-bold text-primary">
           Joke Hub
         </Link>
-        <div className="flex items-center space-x-2 sm:space-x-4">
+        <div className="flex items-center space-x-1 sm:space-x-2">
           {navItems.map((item) =>
             (item.public || (item.requiresAuth && user)) && (
             <Button
@@ -55,8 +55,12 @@ const Navbar = () => {
               variant={pathname === item.href ? 'secondary' : 'ghost'}
               size="sm"
               asChild
+              className={cn(
+                "flex items-center",
+                pathname === item.href ? "bg-secondary text-secondary-foreground hover:bg-secondary/90" : "hover:bg-accent/50"
+              )}
             >
-              <Link href={item.href} className="flex items-center">
+              <Link href={item.href}>
                 <item.icon className="mr-0 h-4 w-4 sm:mr-2" />
                 <span className="hidden sm:inline">{item.label}</span>
               </Link>
@@ -66,7 +70,7 @@ const Navbar = () => {
           {user ? (
              <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="flex items-center">
+                <Button variant="ghost" size="sm" className="flex items-center hover:bg-accent/50">
                   <UserCircle className="mr-0 h-5 w-5 sm:mr-2" />
                   <span className="hidden sm:inline">{user.email || 'Account'}</span>
                 </Button>
@@ -83,8 +87,8 @@ const Navbar = () => {
             </DropdownMenu>
           ) : (
             pathname !== '/auth' && (
-              <Button variant="ghost" size="sm" asChild>
-                <Link href="/auth?redirect=/jokes" className="flex items-center"> {/* Ensure redirect is sensible */}
+              <Button variant="ghost" size="sm" asChild className="hover:bg-accent/50">
+                <Link href="/auth?redirect=/jokes" className="flex items-center">
                   <LogIn className="mr-0 h-4 w-4 sm:mr-2" />
                   <span className="hidden sm:inline">Login</span>
                 </Link>
@@ -98,5 +102,3 @@ const Navbar = () => {
 };
 
 export default Navbar;
-
-    
