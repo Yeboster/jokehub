@@ -52,11 +52,15 @@ const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
         joke.used && isOwner ? "bg-muted/30" : "bg-card"
     )}>
       <CardContent className="p-5 flex-grow">
-        <p className="text-sm text-foreground leading-relaxed">{joke.text}</p>
-        <Badge variant="secondary" className="bg-accent text-accent-foreground flex items-center gap-1.5 py-1 px-2.5 text-xs mt-4">
-            {/* <Tag className="h-3.5 w-3.5" /> // Icon removed from badge as per mockup */}
+        <div className="relative">
+          <p className="text-sm text-foreground leading-relaxed">{joke.text}</p>
+          <Badge
+            variant="secondary" 
+            className="absolute top-0 right-0 bg-accent text-accent-foreground py-0.5 px-2 text-[11px] font-semibold rounded-md"
+          >
             {joke.category}
-        </Badge>
+          </Badge>
+        </div>
       </CardContent>
       <CardFooter className="p-4 border-t border-border/50 flex items-center justify-between">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -88,9 +92,9 @@ const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
                 rating={joke.funnyRate}
                 onRatingChange={isOwner ? handleRatingChange : undefined}
                 readOnly={!isOwner}
-                size={16} // Slightly smaller stars to fit
+                size={16} 
                 disabled={isRating || isTogglingUsed || !isOwner}
-                starClassName={cn(isOwner ? "text-primary" : "text-muted-foreground")} // Active stars primary, inactive muted
+                starClassName={cn(isOwner ? "text-primary" : "text-muted-foreground")} 
             />
             {isOwner && isRating && <Loader2 className="ml-1 h-3 w-3 animate-spin text-primary" />}
             
