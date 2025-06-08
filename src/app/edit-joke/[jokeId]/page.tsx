@@ -240,7 +240,7 @@ export default function EditJokePage() {
                               </Button>
                           </PopoverTrigger>
                         </FormControl>
-                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0 max-h-60 overflow-y-auto" align="start">
                           <Command shouldFilter={false}>
                             <CommandInput placeholder="Search or create..." value={categorySearch} onValueChange={setCategorySearch} />
                              <CommandList>
@@ -263,12 +263,15 @@ export default function EditJokePage() {
               )} />
               <FormField control={form.control} name="funnyRate" render={({ field }) => (
                   <FormItem> <FormLabel>Funny Rate</FormLabel>
-                    <Select onValueChange={(value) => field.onChange(parseInt(value, 10))} value={field.value?.toString() ?? "0"} disabled={isFormDisabled}>
-                      <FormControl> <SelectTrigger> <SelectValue placeholder="Select a rating" /> </SelectTrigger> </FormControl>
-                      <SelectContent> <SelectItem value="0">Unrated</SelectItem>
-                        {[1, 2, 3, 4, 5].map(rate => (<SelectItem key={rate} value={rate.toString()}>{rate} Star{rate > 1 ? 's' : ''}</SelectItem>))}
-                      </SelectContent>
-                    </Select> <FormMessage />
+                    <FormControl>
+                      <Select onValueChange={(value) => field.onChange(parseInt(value, 10))} value={field.value?.toString() ?? "0"} disabled={isFormDisabled}>
+                        <SelectTrigger> <SelectValue placeholder="Select a rating" /> </SelectTrigger>
+                        <SelectContent> <SelectItem value="0">Unrated</SelectItem>
+                          {[1, 2, 3, 4, 5].map(rate => (<SelectItem key={rate} value={rate.toString()}>{rate} Star{rate > 1 ? 's' : ''}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <FormMessage />
                   </FormItem>
               )} />
               <div className="flex flex-col sm:flex-row gap-2 justify-end">
