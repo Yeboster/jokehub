@@ -228,15 +228,18 @@ export default function EditJokePage() {
               <FormField control={form.control} name="category" render={({ field }) => (
                  <FormItem className="flex flex-col"> <FormLabel>Category</FormLabel>
                      <Popover open={isCategoryPopoverOpen} onOpenChange={setCategoryPopoverOpen}>
-                        <PopoverTrigger asChild> <FormControl>
-                            <Button variant="outline" role="combobox" aria-expanded={isCategoryPopoverOpen}
-                              className={cn("w-full justify-between", !field.value && "text-muted-foreground")}
-                              disabled={isFormDisabled || loadingCategories} >
-                             <span className="truncate">
-                              {loadingCategories ? "Loading..." : field.value ? categoryNames.find(name => name.toLowerCase() === field.value.toLowerCase()) || field.value : "Select or type..."}
-                             </span> <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                          </FormControl> </PopoverTrigger>
+                        <FormControl>
+                          <PopoverTrigger asChild>
+                              <Button variant="outline" role="combobox"
+                                // aria-expanded is handled by PopoverTrigger
+                                className={cn("w-full justify-between", !field.value && "text-muted-foreground")}
+                                disabled={isFormDisabled || loadingCategories} >
+                               <span className="truncate">
+                                {loadingCategories ? "Loading..." : field.value ? categoryNames.find(name => name.toLowerCase() === field.value.toLowerCase()) || field.value : "Select or type..."}
+                               </span> <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                          </PopoverTrigger>
+                        </FormControl>
                         <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
                           <Command shouldFilter={false}>
                             <CommandInput placeholder="Search or create..." value={categorySearch} onValueChange={setCategorySearch} />
@@ -284,5 +287,3 @@ export default function EditJokePage() {
     </div>
   );
 }
-
-    
