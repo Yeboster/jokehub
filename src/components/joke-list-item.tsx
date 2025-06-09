@@ -30,8 +30,8 @@ const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
   const isOwner = currentUser?.uid === joke.userId;
 
   const handleRatingChange = async (newRating: number) => {
-    if (!isOwner) { 
-        return; 
+    if (!isOwner) {
+        return;
     }
     if (joke.funnyRate === newRating) return;
     setIsRating(true);
@@ -40,7 +40,7 @@ const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
   };
 
   const handleToggleUsed = async () => {
-    if (!isOwner) return; 
+    if (!isOwner) return;
     setIsTogglingUsed(true);
     await toggleUsed(joke.id, joke.used);
     setIsTogglingUsed(false);
@@ -48,17 +48,16 @@ const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
 
   return (
     <Card className={cn(
-        "flex flex-col shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-lg overflow-hidden border-primary/20", 
+        "flex flex-col shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-lg overflow-hidden border-primary/20",
         joke.used && isOwner ? "bg-muted/30" : "bg-card"
     )}>
       <Link href={`/joke/${joke.id}`} passHref legacyBehavior>
-        <a className="block hover:bg-accent/20 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 rounded-t-lg">
-          {/* CardContent now has flex-grow to push footer down */}
+        <a className="block flex-grow flex flex-col hover:bg-accent/20 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 rounded-t-lg">
           <CardContent className="p-5 flex-grow cursor-pointer">
-            <div className="relative h-full"> 
-              <p className="text-sm text-foreground leading-relaxed pb-8">{joke.text}</p> 
+            <div className="relative h-full">
+              <p className="text-sm text-foreground leading-relaxed pb-8">{joke.text}</p>
               <Badge
-                variant="secondary" 
+                variant="secondary"
                 className="absolute bottom-0 left-0 bg-accent text-accent-foreground py-0.5 px-2 text-[11px] font-semibold rounded-md"
               >
                 {joke.category}
@@ -69,17 +68,17 @@ const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
       </Link>
       <CardFooter className="p-4 border-t border-border/50 flex items-center justify-between">
         {/* Left side: Details */}
-        <div className="flex items-center flex-nowrap text-xs text-muted-foreground"> {/* Removed gap-2 here */}
+        <div className="flex items-center flex-nowrap text-xs text-muted-foreground">
             <div className="flex items-center gap-1 flex-shrink-0"> {/* Date */}
                 <CalendarDays className="h-4 w-4" />
                 {format(joke.dateAdded, 'PP')}
             </div>
-            {isOwner && currentUser?.email && ( /* User info wrapper div */
-                <div className="ml-2 flex-shrink-0"> {/* Added ml-2 for spacing, and flex-shrink-0 */}
+            {isOwner && currentUser?.email && (
+                <div className="ml-2 flex-shrink-0">
                     <TooltipProvider delayDuration={200}>
                     <Tooltip>
                         <TooltipTrigger asChild>
-                        <div className="flex items-center gap-1 cursor-default"> {/* Removed flex-shrink-0 from here as parent has it */}
+                        <div className="flex items-center gap-1 cursor-default">
                             <UserCircle className="h-4 w-4" />
                             <span>You</span>
                         </div>
@@ -99,12 +98,12 @@ const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
                 rating={joke.funnyRate}
                 onRatingChange={isOwner ? handleRatingChange : undefined}
                 readOnly={!isOwner}
-                size={16} 
+                size={16}
                 disabled={isRating || isTogglingUsed || !isOwner}
-                starClassName={cn(isOwner ? "text-primary" : "text-muted-foreground")} 
+                starClassName={cn(isOwner ? "text-primary" : "text-muted-foreground")}
             />
             {isOwner && isRating && <Loader2 className="ml-1 h-3 w-3 animate-spin text-primary" />}
-            
+
             {isOwner && (
               <TooltipProvider delayDuration={300}>
                 <Tooltip>
@@ -157,4 +156,3 @@ const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
 };
 
 export default JokeListItem;
-
