@@ -68,25 +68,27 @@ const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
       </Link>
       <CardFooter className="p-4 border-t border-border/50 flex items-center justify-between">
         {/* Left side: Details */}
-        <div className="flex items-center flex-nowrap gap-2 text-xs text-muted-foreground">
+        <div className="flex items-center flex-nowrap text-xs text-muted-foreground"> {/* Removed gap-2 here */}
             <div className="flex items-center gap-1 flex-shrink-0"> {/* Date */}
                 <CalendarDays className="h-4 w-4" />
                 {format(joke.dateAdded, 'PP')}
             </div>
-            {isOwner && currentUser?.email && ( /* User info */
-                <TooltipProvider delayDuration={200}>
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                    <div className="flex items-center gap-1 cursor-default flex-shrink-0">
-                        <UserCircle className="h-4 w-4" />
-                        <span>You</span>
-                    </div>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                    <p>Posted by: You ({currentUser.email})</p>
-                    </TooltipContent>
-                </Tooltip>
-                </TooltipProvider>
+            {isOwner && currentUser?.email && ( /* User info wrapper div */
+                <div className="ml-2 flex-shrink-0"> {/* Added ml-2 for spacing, and flex-shrink-0 */}
+                    <TooltipProvider delayDuration={200}>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                        <div className="flex items-center gap-1 cursor-default"> {/* Removed flex-shrink-0 from here as parent has it */}
+                            <UserCircle className="h-4 w-4" />
+                            <span>You</span>
+                        </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                        <p>Posted by: You ({currentUser.email})</p>
+                        </TooltipContent>
+                    </Tooltip>
+                    </TooltipProvider>
+                </div>
             )}
         </div>
 
