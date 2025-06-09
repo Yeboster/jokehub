@@ -67,20 +67,19 @@ const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
         </a>
       </Link>
       <CardFooter className="p-4 border-t border-border/50 flex items-center justify-between">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <div className="flex items-center gap-1">
+        {/* Left side: Details */}
+        <div className="flex items-center flex-nowrap gap-2 text-xs text-muted-foreground">
+            <div className="flex items-center gap-1 flex-shrink-0"> {/* Date */}
                 <CalendarDays className="h-4 w-4" />
                 {format(joke.dateAdded, 'PP')}
             </div>
-            {isOwner && currentUser?.email && ( 
+            {isOwner && currentUser?.email && ( /* User info */
                 <TooltipProvider delayDuration={200}>
                 <Tooltip>
                     <TooltipTrigger asChild>
-                    <div className="flex items-center gap-1 cursor-default">
+                    <div className="flex items-center gap-1 cursor-default flex-shrink-0">
                         <UserCircle className="h-4 w-4" />
-                        <span className="truncate max-w-[100px] sm:max-w-[120px]"> 
-                        You
-                        </span>
+                        <span>You</span>
                     </div>
                     </TooltipTrigger>
                     <TooltipContent>
@@ -91,6 +90,7 @@ const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
             )}
         </div>
 
+        {/* Right side: Actions */}
         <div className="flex items-center gap-1">
             <StarRating
                 rating={joke.funnyRate}
