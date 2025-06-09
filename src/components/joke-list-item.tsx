@@ -51,17 +51,21 @@ const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
         "flex flex-col shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-lg overflow-hidden border-primary/20", 
         joke.used && isOwner ? "bg-muted/30" : "bg-card"
     )}>
-      <CardContent className="p-5 flex-grow">
-        <div className="relative h-full"> {/* Ensure relative container takes full height of content area */}
-          <p className="text-sm text-foreground leading-relaxed pb-8">{joke.text}</p> {/* Added padding-bottom to avoid overlap */}
-          <Badge
-            variant="secondary" 
-            className="absolute bottom-0 left-0 bg-accent text-accent-foreground py-0.5 px-2 text-[11px] font-semibold rounded-md"
-          >
-            {joke.category}
-          </Badge>
-        </div>
-      </CardContent>
+      <Link href={`/joke/${joke.id}`} passHref legacyBehavior>
+        <a className="block hover:bg-accent/20 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 rounded-t-lg">
+          <CardContent className="p-5 flex-grow cursor-pointer">
+            <div className="relative h-full"> 
+              <p className="text-sm text-foreground leading-relaxed pb-8">{joke.text}</p> 
+              <Badge
+                variant="secondary" 
+                className="absolute bottom-0 left-0 bg-accent text-accent-foreground py-0.5 px-2 text-[11px] font-semibold rounded-md"
+              >
+                {joke.category}
+              </Badge>
+            </div>
+          </CardContent>
+        </a>
+      </Link>
       <CardFooter className="p-4 border-t border-border/50 flex items-center justify-between">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <div className="flex items-center gap-1">
@@ -150,4 +154,3 @@ const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
 };
 
 export default JokeListItem;
-
