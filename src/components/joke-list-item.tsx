@@ -53,6 +53,7 @@ const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
     )}>
       <Link href={`/joke/${joke.id}`} passHref legacyBehavior>
         <a className="block hover:bg-accent/20 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 rounded-t-lg">
+          {/* CardContent now has flex-grow to push footer down */}
           <CardContent className="p-5 flex-grow cursor-pointer">
             <div className="relative h-full"> 
               <p className="text-sm text-foreground leading-relaxed pb-8">{joke.text}</p> 
@@ -156,3 +157,4 @@ const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
 };
 
 export default JokeListItem;
+
