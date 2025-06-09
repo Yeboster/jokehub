@@ -54,31 +54,27 @@ export default function JokesPage() {
   const [tempShowOnlyUsed, setTempShowOnlyUsed] = useState<boolean>(defaultPageFilters.showOnlyUsed);
   const [categorySearch, setCategorySearch] = useState('');
 
-  // Effect for initial load and auth changes
+  // Effect for initial load and auth/filter changes
   useEffect(() => {
     if (authLoading) {
       return; // Wait for auth to settle
     }
 
-    // This effect is triggered by user auth changes or if activeFilters state changes.
-    // We construct the filters to be used for fetching based on the latest state.
-    let filtersToLoad = { ...activeFilters };
+    let filtersToApply = { ...activeFilters };
 
-    if (filtersToLoad.scope === 'user' && !user) {
-      // If scope is 'user' but user is not logged in (e.g., logged out),
-      // force scope to 'public' and reset other filters to default.
-      filtersToLoad = {
-        ...defaultPageFilters, // Resets categories, rating, showOnlyUsed
-        scope: 'public',
-      };
-      // Update the page's activeFilters state to reflect this change.
-      // This will cause another run of this useEffect, which is fine.
-      // In the next run, this 'if' condition will be false, and the 'else' will execute.
-      setActiveFilters(filtersToLoad);
+    // Scenario: User was viewing 'My Jokes' (activeFilters.scope === 'user') and then logs out (!user).
+    // In this case, we must switch to 'public' scope.
+    if (activeFilters.scope === 'user' && !user) {
+      filtersToApply = { ...defaultPageFilters, scope: 'public' };
+      // Update activeFilters state. This will cause this useEffect to run again.
+      // In the next run, this condition will be false, and the 'else' block will execute loadJokesWithFilters.
+      setActiveFilters(filtersToApply);
     } else {
-      // For initial load, or if auth state is stable relative to scope,
-      // or after setActiveFilters above has corrected the scope.
-      loadJokesWithFilters(filtersToLoad);
+      // Load jokes with the current (or just corrected) filters.
+      // This path is taken on initial load (if auth is settled),
+      // or when activeFilters change due to user interaction (apply/clear),
+      // or after the scope correction above.
+      loadJokesWithFilters(filtersToApply);
     }
   }, [user, authLoading, activeFilters, loadJokesWithFilters]);
 
@@ -91,22 +87,12 @@ export default function JokesPage() {
     return Array.from(new Set(allCategoriesFromContext.map(cat => cat.name))).sort();
   }, [allCategoriesFromContext, tempScope, user]);
 
-  // Used for validating categories when modal is opened/closed without applying
-  const activeScopeCategoryNames = useMemo(() => {
-    if(!allCategoriesFromContext) return [];
-    if (activeFilters.scope === 'user' && user) {
-        return Array.from(new Set(allCategoriesFromContext.filter(cat => cat.userId === user.uid).map(cat => cat.name))).sort();
-    }
-    return Array.from(new Set(allCategoriesFromContext.map(cat => cat.name))).sort();
-  }, [allCategoriesFromContext, activeFilters.scope, user]);
-
-
   const jokesToDisplay = useMemo(() => jokes ?? [], [jokes]);
 
   const handleOpenFilterModal = () => {
     // Initialize modal's temp state from current active filters
     setTempScope(activeFilters.scope);
-    setTempSelectedCategories([...activeFilters.selectedCategories]); // Use a new array
+    setTempSelectedCategories([...activeFilters.selectedCategories]);
     setTempFilterFunnyRate(activeFilters.filterFunnyRate);
     setTempShowOnlyUsed(activeFilters.showOnlyUsed);
     setCategorySearch('');
@@ -123,22 +109,26 @@ export default function JokesPage() {
       filterFunnyRate: tempFilterFunnyRate,
       showOnlyUsed: tempShowOnlyUsed,
     };
-    setActiveFilters(newFilters); // This will trigger the useEffect
-    // loadJokesWithFilters(newFilters); // Explicit call also fine, useEffect will also call it.
+    setActiveFilters(newFilters); // This will trigger the useEffect to load jokes
     setIsFilterModalOpen(false);
   };
 
   const handleClearFilters = () => {
-    const newFilters = { ...defaultPageFilters };
-    setActiveFilters(newFilters); // This will trigger the useEffect
+    // Explicitly define the state to reset to, ensuring scope is 'public'
+    const clearedFilters: FilterParams = {
+      scope: 'public',
+      selectedCategories: [],
+      filterFunnyRate: -1,
+      showOnlyUsed: false,
+    };
+    setActiveFilters(clearedFilters); // This will trigger the useEffect to load jokes
 
     // Reset temp states for modal consistency if it were reopened
-    setTempScope(newFilters.scope);
-    setTempSelectedCategories(newFilters.selectedCategories);
-    setTempFilterFunnyRate(newFilters.filterFunnyRate);
-    setTempShowOnlyUsed(newFilters.showOnlyUsed);
+    setTempScope(clearedFilters.scope);
+    setTempSelectedCategories(clearedFilters.selectedCategories);
+    setTempFilterFunnyRate(clearedFilters.filterFunnyRate);
+    setTempShowOnlyUsed(clearedFilters.showOnlyUsed);
     setCategorySearch('');
-    // loadJokesWithFilters(newFilters); // Explicit call also fine
   };
 
 
@@ -166,8 +156,8 @@ export default function JokesPage() {
 
   const hasActiveAppliedFilters = activeFilters.selectedCategories.length > 0 || activeFilters.filterFunnyRate !== -1 || activeFilters.showOnlyUsed || (user && activeFilters.scope === 'user');
 
-  const pageTitle = activeFilters.scope === 'user' ? "My Joke Collection" : "All Jokes Feed";
-  const pageDescription = activeFilters.scope === 'user'
+  const pageTitle = activeFilters.scope === 'user' && user ? "My Joke Collection" : "All Jokes Feed";
+  const pageDescription = activeFilters.scope === 'user' && user
     ? "Manage and filter your personal joke collection."
     : "Browse, filter, and enjoy jokes from the community. Add your own too!";
 
@@ -191,7 +181,7 @@ export default function JokesPage() {
 
       <div className="mb-6 p-4 flex items-center gap-x-4 gap-y-3 border-b pb-6">
         <Dialog open={isFilterModalOpen} onOpenChange={(isOpen) => {
-          if (!isOpen) { // Reset temp states if modal is closed without applying
+          if (!isOpen) { 
             setTempScope(activeFilters.scope);
             setTempSelectedCategories([...activeFilters.selectedCategories]);
             setTempFilterFunnyRate(activeFilters.filterFunnyRate);
@@ -228,8 +218,6 @@ export default function JokesPage() {
                       setTempScope('public');
                     } else {
                       setTempScope(value);
-                      // When scope changes in modal, clear selected categories from temp state
-                      // as they might not be valid for the new scope. User must re-select.
                       setTempSelectedCategories([]);
                       setCategorySearch('');
                     }
