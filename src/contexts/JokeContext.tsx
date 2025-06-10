@@ -566,7 +566,7 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user, toast]);
 
 
-  const value = {
+  const value: JokeContextProps = {
     jokes,
     categories,
     addJoke,
@@ -583,7 +583,7 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loadingMoreJokes,
     submitUserRating, 
     getUserRatingForJoke,
-  } as JokeContextProps; 
+  }; 
 
   return <JokeContext.Provider value={value}>{children}</JokeContext.Provider>;
 };
