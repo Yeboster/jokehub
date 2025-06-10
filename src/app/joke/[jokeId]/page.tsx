@@ -35,7 +35,7 @@ export default function JokeShowPage() {
   const [currentUserRating, setCurrentUserRating] = useState<UserRating | null>(null);
   const [ratingInputValue, setRatingInputValue] = useState<number>(0); // For star input
   const [commentInputValue, setCommentInputValue] = useState<string>('');
-  const [isSubmittingRating, setIsSubmittingRating] = useState<false>(false);
+  const [isSubmittingRating, setIsSubmittingRating] = useState<boolean>(false);
   const [isLoadingRating, setIsLoadingRating] = useState<boolean>(true);
 
 
@@ -100,7 +100,7 @@ export default function JokeShowPage() {
   const handleRatingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !joke) {
-      toast({ title: 'Error', description: 'Cannot submit rating.', variant: 'destructive' });
+      toast({ title: 'Error', description: 'Cannot submit rating. Please log in or ensure the joke is loaded.', variant: 'destructive' });
       return;
     }
     if (ratingInputValue === 0) {
@@ -119,7 +119,10 @@ export default function JokeShowPage() {
        }
       toast({ title: 'Success', description: currentUserRating ? 'Your rating has been updated.' : 'Your rating has been submitted.' });
     } catch (err) {
-      // Error toast is handled within submitUserRating in context
+      // Error toast is usually handled within submitUserRating in context if it throws a custom error
+      // or specific handling can be added here.
+      console.error("Error submitting rating from page:", err);
+      toast({ title: 'Rating Submission Error', description: 'Could not submit your rating.', variant: 'destructive'});
     } finally {
       setIsSubmittingRating(false);
     }
@@ -295,5 +298,7 @@ export default function JokeShowPage() {
     </div>
   );
 }
+
+    
 
     
