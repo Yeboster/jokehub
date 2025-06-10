@@ -3,7 +3,7 @@
 
 import type { FC } from 'react';
 import { format } from 'date-fns';
-import { Check, Square, Loader2, Pencil, Tag, CalendarDays, UserCircle, StarIcon as LucideStarIcon } from 'lucide-react';
+import { Check, Square, Loader2, UserCircle, Star as LucideStarIcon } from 'lucide-react'; // Pencil removed
 import { useState } from 'react';
 import Link from 'next/link';
 
@@ -51,26 +51,25 @@ const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
         "flex flex-col shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-lg overflow-hidden border-primary/20",
         joke.used && isOwner ? "bg-muted/30" : "bg-card"
     )}>
-      <Link href={`/joke/${joke.id}`} passHref legacyBehavior>
-        <a className="block flex-grow flex flex-col hover:bg-accent/20 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 rounded-t-lg">
-          <CardContent className="p-5 flex-grow cursor-pointer">
-            <div className="relative h-full">
-              <p className="text-sm text-foreground leading-relaxed pb-8">{joke.text}</p>
-              <Badge
-                variant="secondary"
-                className="absolute bottom-0 left-0 bg-accent text-accent-foreground py-0.5 px-2 text-[11px] font-semibold rounded-md"
-              >
-                {joke.category}
-              </Badge>
-            </div>
-          </CardContent>
-        </a>
+      <Link href={`/joke/${joke.id}`}
+            className="block flex-grow flex flex-col hover:bg-accent/20 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 rounded-t-lg">
+        <CardContent className="p-5 flex-grow cursor-pointer">
+          <div className="relative h-full">
+            <p className="text-sm text-foreground leading-relaxed pb-8">{joke.text}</p>
+            <Badge
+              variant="secondary"
+              className="absolute bottom-0 left-0 bg-accent text-accent-foreground py-0.5 px-2 text-[11px] font-semibold rounded-md"
+            >
+              {joke.category}
+            </Badge>
+          </div>
+        </CardContent>
       </Link>
       <CardFooter className="p-4 border-t border-border/50 flex items-center justify-between">
         {/* Left side: Details */}
         <div className="flex items-center flex-nowrap text-xs text-muted-foreground">
             <div className="flex items-center gap-1 flex-shrink-0"> {/* Date */}
-                <CalendarDays className="h-4 w-4" />
+                <LucideStarIcon className="h-4 w-4" /> {/* Changed from CalendarDays */}
                 {format(joke.dateAdded, 'PP')}
             </div>
             {isOwner && currentUser?.email && (
