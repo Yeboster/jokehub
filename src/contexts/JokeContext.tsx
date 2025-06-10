@@ -507,6 +507,7 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
         userId: user.uid,
         ratingValue,
         updatedAt: now,
+        comment: null
       };
 
 
@@ -520,7 +521,7 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (comment && comment.trim() !== '') {
             updateData.comment = comment.trim();
         } else {
-            updateData.comment = deleteField();
+            updateData.comment = null
         }
 
         await updateDoc(existingRatingDocRef, updateData);
@@ -529,7 +530,7 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Create new rating
         if (comment && comment.trim() !== '') {
             ratingData.comment = comment.trim();
-        } // If comment is empty/undefined, it's simply not added to the new document
+        }
         ratingData.createdAt = now; // Set createdAt only for new ratings
         await addDoc(ratingsCollectionRef, ratingData);
         toast({ title: 'Rating Submitted', description: 'Your rating has been successfully submitted.' });
