@@ -509,12 +509,6 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updatedAt: now,
       };
 
-      if (comment && comment.trim() !== '') {
-        ratingData.comment = comment.trim();
-      } else {
-        // If comment is empty or undefined, ensure it's removed if it exists
-        ratingData.comment = deleteField();
-      }
 
       if (!querySnapshot.empty) {
         // Update existing rating
@@ -523,10 +517,19 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const updateData = {...ratingData};
         delete updateData.createdAt; // createdAt should not be updated
 
+        if (comment && comment.trim() !== '') {
+            updateData.comment = comment.trim();
+        } else {
+            updateData.comment = deleteField();
+        }
+
         await updateDoc(existingRatingDocRef, updateData);
         toast({ title: 'Rating Updated', description: 'Your rating has been successfully updated.' });
       } else {
         // Create new rating
+        if (comment && comment.trim() !== '') {
+            ratingData.comment = comment.trim();
+        } // If comment is empty/undefined, it's simply not added to the new document
         ratingData.createdAt = now; // Set createdAt only for new ratings
         await addDoc(ratingsCollectionRef, ratingData);
         toast({ title: 'Rating Submitted', description: 'Your rating has been successfully submitted.' });
