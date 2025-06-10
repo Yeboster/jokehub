@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { Joke, Category } from '@/lib/types';
+import type { Joke, Category, UserRating } from '@/lib/types'; // Added UserRating
 import type React from 'react';
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import {
@@ -56,12 +56,14 @@ interface JokeContextProps {
   updateJoke: (jokeId: string, updatedData: UpdateJokeData) => Promise<void>;
   loadJokesWithFilters: (filters: FilterParams) => Promise<void>;
   loadMoreFilteredJokes: () => Promise<void>;
+  // submitUserRating and getUserRatingForJoke will be added here in the next step
 }
 
 const JokeContext = createContext<JokeContextProps | undefined>(undefined);
 
 const JOKES_COLLECTION = 'jokes';
 const CATEGORIES_COLLECTION = 'categories';
+const JOKE_RATINGS_COLLECTION = 'jokeRatings'; // Defined the constant
 
 const defaultFilters: FilterParams = {
   selectedCategories: [],
@@ -120,7 +122,7 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return query(collection(db, JOKES_COLLECTION), ...queryConstraints);
   };
 
-  const _fetchJokes = async (filters: FilterParams, isLoadMore: boolean) => {
+  const _fetchJokes = useCallback(async (filters: FilterParams, isLoadMore: boolean) => {
     if (filters.scope === 'user' && !user) {
       setJokes([]);
       setHasMoreJokes(false);
@@ -174,16 +176,17 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       if (isLoadMore) setLoadingMoreJokes(false); else setLoadingInitialJokes(false);
     }
-  };
+  }, [user, toast]); // Added user and toast dependencies for _fetchJokes
+
 
   const loadJokesWithFilters = useCallback(async (filters: FilterParams) => {
     activeFiltersRef.current = filters;
     await _fetchJokes(filters, false);
-  }, [user, toast]); // _fetchJokes is stable, user dependency is important for re-triggering on login/logout if needed
+  }, [_fetchJokes]);
 
   const loadMoreFilteredJokes = useCallback(async () => {
     await _fetchJokes(activeFiltersRef.current, true);
-  }, []); // Depends on activeFiltersRef.current which is stable, _fetchJokes is stable
+  }, [_fetchJokes]);
 
   useEffect(() => {
     if (authLoading) {
@@ -192,12 +195,10 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoadingInitialJokes(true);
       setHasMoreJokes(true);
       lastVisibleJokeDocRef.current = null;
-      activeFiltersRef.current = { ...defaultFilters, scope: 'public' }; // Reset to public on auth loading
+      activeFiltersRef.current = { ...defaultFilters, scope: 'public' };
       return;
     }
 
-    // Fetch all categories for filtering purposes, regardless of login state.
-    // _ensureCategoryExistsAndAdd will correctly scope new categories to the logged-in user.
     const categoriesQuery = query(
       collection(db, CATEGORIES_COLLECTION),
       orderBy('name', 'asc')
@@ -218,49 +219,49 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
       toast({ title: 'Error', description: 'Could not load categories.', variant: 'destructive' });
       setCategories([]);
     });
-
-    // Determine initial scope based on user state for the first load.
-    // Public pages will override this with scope: 'public'.
-    // "My Jokes" page will explicitly use scope: 'user'.
-    // The landing page (`/`) can decide its scope or not load jokes initially from context.
-    // For now, JokeProvider itself won't auto-load jokes. Pages will call loadJokesWithFilters.
-    // But if we want a default load for initial context setup:
-    // if (user) {
-    //   loadJokesWithFilters({ ...defaultFilters, scope: 'user' }); // Or 'public' if that's the desired default view
-    // } else {
-    //   loadJokesWithFilters({ ...defaultFilters, scope: 'public' });
-    // }
-    // To keep it simple, let pages trigger the first load with their desired scope.
-    // Set initial loading to false if no user, so pages don't hang.
-    if (!user) {
-        setLoadingInitialJokes(false);
-        setJokes([]); // Provide an empty array for public pages if no user
+    
+    // This effect now only loads jokes if activeFilters has been set (e.g. by a page component).
+    // It ensures that `loadJokesWithFilters` is called with the `activeFiltersRef.current`
+    // if it's different from `defaultFilters` or if the user state has changed which might
+    // affect the scope of 'user' jokes.
+    
+    // Construct effectiveFilters based on current activeFilters and auth state
+    let effectiveFilters = { ...activeFiltersRef.current };
+    if (effectiveFilters.scope === 'user' && !user) {
+        effectiveFilters = { ...defaultFilters, scope: 'public' }; // Revert to public if user logs out from 'My Jokes'
+    }
+    
+    // If activeFiltersRef.current are not the default ones or auth state just changed,
+    // and loadJokesWithFilters itself hasn't been called yet by a page setting activeFilters
+    if (JSON.stringify(activeFiltersRef.current) !== JSON.stringify(defaultFilters) || 
+        (activeFiltersRef.current.scope === 'user' && !user) || 
+        (activeFiltersRef.current.scope === 'public' && user && JSON.stringify(activeFiltersRef.current) === JSON.stringify(defaultFilters)) ) {
+         loadJokesWithFilters(effectiveFilters);
+    } else if (!user) {
+        // Ensure public jokes are loaded if no user and filters are default
+        loadJokesWithFilters({ ...defaultFilters, scope: 'public' });
     }
 
 
     return () => {
       unsubscribeCategories();
     };
-  }, [authLoading, user, toast]); // Removed loadJokesWithFilters from here to avoid potential loops
+  }, [authLoading, user, toast, loadJokesWithFilters]);
 
 
   const _ensureCategoryExistsAndAdd = async (rawCategoryName: string, userId: string): Promise<string> => {
     const categoryName = rawCategoryName.trim();
     if (!categoryName) throw new Error("Category name cannot be empty.");
 
-    // Check local cache first (which contains all categories, so check userId match)
     const existingCategoryInCache = categories?.find(cat => cat.name.toLowerCase() === categoryName.toLowerCase() && cat.userId === userId);
     if (existingCategoryInCache) return existingCategoryInCache.name;
     
-    // Then check DB for this specific user
     const q = query(collection(db, CATEGORIES_COLLECTION), where('userId', '==', userId), where('name', '==', categoryName));
     try {
       const querySnapshot = await getDocs(q);
       if (!querySnapshot.empty) return querySnapshot.docs[0].data().name as string;
       
       await addDoc(collection(db, CATEGORIES_COLLECTION), { name: categoryName, userId: userId });
-      // No need to manually update `categories` state here due to onSnapshot listener, but it might take a moment.
-      // For immediate UI consistency, could add it, but onSnapshot should handle it.
       return categoryName;
     } catch (error) {
       console.error(`Error ensuring category "${categoryName}" exists:`, error);
@@ -286,7 +287,6 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
           userId: user.uid,
         });
         toast({ title: 'Success', description: 'Joke added successfully!' });
-        // Refresh jokes list if current view is user's jokes or if it's public and might show up
         if (activeFiltersRef.current.scope === 'user' || activeFiltersRef.current.scope === 'public') {
              await _fetchJokes(activeFiltersRef.current, false);
         }
@@ -360,7 +360,7 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (activeFiltersRef.current.showOnlyUsed && activeFiltersRef.current.scope === 'user') {
             await _fetchJokes(activeFiltersRef.current, false);
         } else if (activeFiltersRef.current.showOnlyUsed && activeFiltersRef.current.scope === 'public') {
-            await _fetchJokes(activeFiltersRef.current, false); // Public view might also be affected
+            await _fetchJokes(activeFiltersRef.current, false);
         }
       } catch (error: any) {
         console.error('Error toggling joke status:', error);
@@ -372,7 +372,7 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const rateJoke = useCallback(
     async (id: string, rating: number) => {
-      if (!user) { // Allow anyone to rate? Or only owner? For now, let's assume only owner can rate their joke.
+      if (!user) {
         toast({ title: 'Authentication Required', description: 'Please log in to rate jokes.', variant: 'destructive' });
         return;
       }
@@ -389,8 +389,8 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         const currentFilters = activeFiltersRef.current;
         if (currentFilters.filterFunnyRate !== -1 && 
-            ( (docSnap.data()?.funnyRate !== currentFilters.filterFunnyRate && rating === currentFilters.filterFunnyRate) || // was not matching, now matching
-              (docSnap.data()?.funnyRate === currentFilters.filterFunnyRate && rating !== currentFilters.filterFunnyRate) )) { // was matching, now not matching
+            ( (docSnap.data()?.funnyRate !== currentFilters.filterFunnyRate && rating === currentFilters.filterFunnyRate) ||
+              (docSnap.data()?.funnyRate === currentFilters.filterFunnyRate && rating !== currentFilters.filterFunnyRate) )) { 
              await _fetchJokes(currentFilters, false);
         }
 
@@ -399,7 +399,7 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
         toast({ title: 'Error', description: error.message || 'Failed to rate joke.', variant: 'destructive' });
       }
     },
-    [toast, user, _fetchJokes] // jokes removed from deps to avoid potential re-renders, relies on local update + conditional refetch
+    [toast, user, _fetchJokes]
   );
 
   const updateJokeCategory = useCallback(
@@ -443,7 +443,6 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 
   const getJokeById = useCallback(async (jokeId: string): Promise<Joke | null> => {
-     // Publicly fetchable, ownership checks done on pages like EditJokePage.
      const jokeDocRef = doc(db, JOKES_COLLECTION, jokeId);
      try {
         const docSnap = await getDoc(jokeDocRef);
@@ -485,16 +484,17 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
          }
          await updateDoc(jokeDocRef, dataToUpdate);
          toast({ title: 'Success', description: 'Joke updated successfully!' });
-         // Re-fetch to ensure consistency with current filters (public or user scope)
          await _fetchJokes(activeFiltersRef.current, false);
       } catch (error: any) {
           console.error(`Error updating joke ${jokeId}:`, error);
            if (!(error instanceof Error && error.message.includes("Category")) && !(error instanceof Error && error.message.includes("permission denied"))) {
              toast({ title: 'Error Updating Joke', description: error.message || 'Failed to update joke.', variant: 'destructive' });
            }
-           throw error; // Re-throw for form handling
+           throw error; 
       }
    }, [user, toast, categories, _fetchJokes]);
+
+  // Functions for user ratings will be added here in subsequent steps
 
   const value = {
     jokes,
@@ -511,6 +511,7 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
     hasMoreJokes,
     loadingInitialJokes,
     loadingMoreJokes,
+    // submitUserRating, getUserRatingForJoke will be added here later
   };
 
   return <JokeContext.Provider value={value}>{children}</JokeContext.Provider>;
@@ -523,3 +524,4 @@ export const useJokes = (): JokeContextProps => {
   }
   return context;
 };
+
