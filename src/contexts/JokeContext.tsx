@@ -19,6 +19,7 @@ import {
   getDocs,
   getDoc,
   startAfter,
+  deleteField, // Import deleteField
   type DocumentSnapshot,
   type QueryDocumentSnapshot,
 } from 'firebase/firestore';
@@ -221,28 +222,18 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setCategories([]);
     });
     
-    // This effect now only loads jokes if activeFilters has been set (e.g. by a page component).
-    // It ensures that `loadJokesWithFilters` is called with the `activeFiltersRef.current`
-    // if it's different from `defaultFilters` or if the user state has changed which might
-    // affect the scope of 'user' jokes.
-    
-    // Construct effectiveFilters based on current activeFilters and auth state
     let effectiveFilters = { ...activeFiltersRef.current };
     if (effectiveFilters.scope === 'user' && !user) {
-        effectiveFilters = { ...defaultFilters, scope: 'public' }; // Revert to public if user logs out from 'My Jokes'
+        effectiveFilters = { ...defaultFilters, scope: 'public' }; 
     }
     
-    // If activeFiltersRef.current are not the default ones or auth state just changed,
-    // and loadJokesWithFilters itself hasn't been called yet by a page setting activeFilters
     if (JSON.stringify(activeFiltersRef.current) !== JSON.stringify(defaultFilters) || 
         (activeFiltersRef.current.scope === 'user' && !user) || 
         (activeFiltersRef.current.scope === 'public' && user && JSON.stringify(activeFiltersRef.current) === JSON.stringify(defaultFilters)) ) {
          loadJokesWithFilters(effectiveFilters);
     } else if (!user) {
-        // Ensure public jokes are loaded if no user and filters are default
         loadJokesWithFilters({ ...defaultFilters, scope: 'public' });
     }
-
 
     return () => {
       unsubscribeCategories();
@@ -495,7 +486,87 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
    }, [user, toast, categories, _fetchJokes]);
 
-  // Functions for user ratings will be added here in subsequent steps
+  const submitUserRating = useCallback(async (jokeId: string, ratingValue: number, comment?: string): Promise<void> => {
+    if (!user) {
+      toast({ title: 'Login Required', description: 'You must be logged in to rate a joke.', variant: 'destructive' });
+      return;
+    }
+    if (ratingValue < 1 || ratingValue > 5) {
+        toast({ title: 'Invalid Rating', description: 'Rating must be between 1 and 5 stars.', variant: 'destructive'});
+        return;
+    }
+
+    const ratingsCollectionRef = collection(db, JOKE_RATINGS_COLLECTION);
+    const q = query(ratingsCollectionRef, where('jokeId', '==', jokeId), where('userId', '==', user.uid));
+
+    try {
+      const querySnapshot = await getDocs(q);
+      const now = Timestamp.now();
+      const ratingData: any = {
+        jokeId,
+        userId: user.uid,
+        ratingValue,
+        updatedAt: now,
+      };
+
+      if (comment && comment.trim() !== '') {
+        ratingData.comment = comment.trim();
+      } else {
+        // If comment is empty or undefined, ensure it's removed if it exists
+        ratingData.comment = deleteField();
+      }
+
+      if (!querySnapshot.empty) {
+        // Update existing rating
+        const existingRatingDocRef = querySnapshot.docs[0].ref;
+        // Make sure 'createdAt' is not part of the update data unless you want to overwrite it (which is usually not the case)
+        const updateData = {...ratingData};
+        delete updateData.createdAt; // createdAt should not be updated
+
+        await updateDoc(existingRatingDocRef, updateData);
+        toast({ title: 'Rating Updated', description: 'Your rating has been successfully updated.' });
+      } else {
+        // Create new rating
+        ratingData.createdAt = now; // Set createdAt only for new ratings
+        await addDoc(ratingsCollectionRef, ratingData);
+        toast({ title: 'Rating Submitted', description: 'Your rating has been successfully submitted.' });
+      }
+    } catch (error: any) {
+      console.error("Error submitting user rating:", error);
+      toast({ title: 'Rating Error', description: error.message || 'Failed to submit your rating.', variant: 'destructive' });
+      throw error; // Re-throw to be handled by the caller if needed
+    }
+  }, [user, toast]);
+
+
+  const getUserRatingForJoke = useCallback(async (jokeId: string): Promise<UserRating | null> => {
+    // No specific auth check here as it might be called even for non-logged-in users to prepare UI,
+    // but submitUserRating will prevent action. Or, simply return null if no user.
+    if (!user) {
+      return null;
+    }
+    const ratingsCollectionRef = collection(db, JOKE_RATINGS_COLLECTION);
+    const q = query(ratingsCollectionRef, where('jokeId', '==', jokeId), where('userId', '==', user.uid), limit(1));
+
+    try {
+      const querySnapshot = await getDocs(q);
+      if (!querySnapshot.empty) {
+        const docData = querySnapshot.docs[0].data();
+        return {
+          id: querySnapshot.docs[0].id,
+          ...docData,
+          createdAt: (docData.createdAt as Timestamp).toDate(),
+          updatedAt: (docData.updatedAt as Timestamp).toDate(),
+        } as UserRating;
+      }
+      return null;
+    } catch (error: any) {
+      console.error("Error fetching user rating:", error);
+      toast({ title: 'Rating Fetch Error', description: 'Could not fetch your existing rating.', variant: 'destructive' });
+      return null;
+    }
+  }, [user, toast]);
+
 
   const value = {
     jokes,
@@ -512,8 +583,9 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
     hasMoreJokes,
     loadingInitialJokes,
     loadingMoreJokes,
-    // submitUserRating, getUserRatingForJoke will be added here later
-  } as JokeContextProps; // Cast to ensure all props are expected
+    submitUserRating, 
+    getUserRatingForJoke,
+  } as JokeContextProps; 
 
   return <JokeContext.Provider value={value}>{children}</JokeContext.Provider>;
 };
