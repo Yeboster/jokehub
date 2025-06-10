@@ -51,5 +51,33 @@ service cloud.firestore {
       allow update: if false;
       allow delete: if false;
     }
+
+    // Joke Ratings collection rules
+    match /jokeRatings/{ratingId} {
+      // ANYONE can read ratings (e.g., for future display of average ratings or comments)
+      allow read: if true;
+
+      // Authenticated users can create a rating.
+      allow create: if request.auth != null
+                      && request.resource.data.userId == request.auth.uid
+                      && request.resource.data.jokeId is string && request.resource.data.jokeId.size() > 0
+                      && request.resource.data.ratingValue is number
+                      && request.resource.data.ratingValue >= 1 && request.resource.data.ratingValue <= 5
+                      && (request.resource.data.comment == null || (request.resource.data.comment is string && request.resource.data.comment.size() <= 1000))
+                      && request.resource.data.createdAt is timestamp // Should be set by server
+                      && request.resource.data.updatedAt is timestamp; // Should be set by server
+
+      // Authenticated users can update THEIR OWN rating.
+      allow update: if request.auth != null && resource.data.userId == request.auth.uid
+                      && request.resource.data.userId == resource.data.userId // Cannot change owner of rating
+                      && request.resource.data.jokeId == resource.data.jokeId // Cannot change which joke is rated
+                      && request.resource.data.createdAt == resource.data.createdAt // Cannot change creation date
+                      && (request.resource.data.ratingValue == resource.data.ratingValue || (request.resource.data.ratingValue is number && request.resource.data.ratingValue >= 1 && request.resource.data.ratingValue <= 5))
+                      && (request.resource.data.comment == resource.data.comment || request.resource.data.comment == null || (request.resource.data.comment is string && request.resource.data.comment.size() <= 1000))
+                      && request.resource.data.updatedAt is timestamp; // Should be set by server
+
+      // Authenticated users can delete THEIR OWN rating.
+      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
   }
 }
