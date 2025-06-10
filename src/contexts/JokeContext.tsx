@@ -540,8 +540,6 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
 
   const getUserRatingForJoke = useCallback(async (jokeId: string): Promise<UserRating | null> => {
-    // No specific auth check here as it might be called even for non-logged-in users to prepare UI,
-    // but submitUserRating will prevent action. Or, simply return null if no user.
     if (!user) {
       return null;
     }
