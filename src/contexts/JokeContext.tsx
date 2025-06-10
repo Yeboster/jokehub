@@ -56,7 +56,8 @@ interface JokeContextProps {
   updateJoke: (jokeId: string, updatedData: UpdateJokeData) => Promise<void>;
   loadJokesWithFilters: (filters: FilterParams) => Promise<void>;
   loadMoreFilteredJokes: () => Promise<void>;
-  // submitUserRating and getUserRatingForJoke will be added here in the next step
+  submitUserRating: (jokeId: string, ratingValue: number, comment?: string) => Promise<void>;
+  getUserRatingForJoke: (jokeId: string) => Promise<UserRating | null>;
 }
 
 const JokeContext = createContext<JokeContextProps | undefined>(undefined);
@@ -512,7 +513,7 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loadingInitialJokes,
     loadingMoreJokes,
     // submitUserRating, getUserRatingForJoke will be added here later
-  };
+  } as JokeContextProps; // Cast to ensure all props are expected
 
   return <JokeContext.Provider value={value}>{children}</JokeContext.Provider>;
 };
