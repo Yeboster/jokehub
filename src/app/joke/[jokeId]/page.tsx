@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { format } from 'date-fns';
-import { Loader2, ArrowLeft, ShieldAlert, CalendarDays, Tag, Star as StarIcon, Check, MessageSquare, Send } from 'lucide-react';
+import { Loader2, ArrowLeft, ShieldAlert, CalendarDays, Tag, Star as StarIcon, Check, MessageSquare, Send, Users } from 'lucide-react';
 
 import type { Joke, UserRating } from '@/lib/types';
 import { useJokes } from '@/contexts/JokeContext';
@@ -19,11 +19,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { Separator } from '@/components/ui/separator';
 
 export default function JokeShowPage() {
   const params = useParams();
   const router = useRouter();
-  const { getJokeById, loadingInitialJokes: loadingContext, submitUserRating, getUserRatingForJoke } = useJokes();
+  const { getJokeById, loadingInitialJokes: loadingContext, submitUserRating, getUserRatingForJoke, fetchAllRatingsForJoke } = useJokes();
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
 
@@ -33,68 +34,84 @@ export default function JokeShowPage() {
 
   // User Rating State
   const [currentUserRating, setCurrentUserRating] = useState<UserRating | null>(null);
-  const [ratingInputValue, setRatingInputValue] = useState<number>(0); // For star input
+  const [ratingInputValue, setRatingInputValue] = useState<number>(0);
   const [commentInputValue, setCommentInputValue] = useState<string>('');
   const [isSubmittingRating, setIsSubmittingRating] = useState<boolean>(false);
   const [isLoadingRating, setIsLoadingRating] = useState<boolean>(true);
 
+  // Other Users' Ratings State
+  const [otherUserRatings, setOtherUserRatings] = useState<UserRating[]>([]);
+  const [isLoadingOtherRatings, setIsLoadingOtherRatings] = useState<boolean>(true);
 
   const jokeId = Array.isArray(params.jokeId) ? params.jokeId[0] : params.jokeId;
 
   useEffect(() => {
-    async function fetchJokeAndRating() {
+    async function fetchJokeAndRatings() {
       if (!jokeId) {
         setError("Joke ID is missing.");
         setIsLoading(false);
         setIsLoadingRating(false);
+        setIsLoadingOtherRatings(false);
         return;
       }
       setIsLoading(true);
       setIsLoadingRating(true);
+      setIsLoadingOtherRatings(true);
       setError(null);
 
       try {
         const fetchedJoke = await getJokeById(jokeId);
         if (fetchedJoke) {
           setJoke(fetchedJoke);
+
+          let userRating: UserRating | null = null;
           if (user) {
-            const existingRating = await getUserRatingForJoke(jokeId);
-            if (existingRating) {
-              setCurrentUserRating(existingRating);
-              setRatingInputValue(existingRating.ratingValue);
-              setCommentInputValue(existingRating.comment || '');
+            userRating = await getUserRatingForJoke(jokeId);
+            if (userRating) {
+              setCurrentUserRating(userRating);
+              setRatingInputValue(userRating.ratingValue);
+              setCommentInputValue(userRating.comment || '');
             } else {
-              // Reset if no existing rating found for this user
               setCurrentUserRating(null);
               setRatingInputValue(0);
               setCommentInputValue('');
             }
           } else {
-             // No user, so no rating to fetch/display
-              setCurrentUserRating(null);
-              setRatingInputValue(0);
-              setCommentInputValue('');
+            setCurrentUserRating(null);
+            setRatingInputValue(0);
+            setCommentInputValue('');
           }
+          setIsLoadingRating(false);
+
+          // Fetch all ratings and filter out the current user's
+          const allRatings = await fetchAllRatingsForJoke(jokeId);
+          setOtherUserRatings(allRatings.filter(rating => rating.userId !== user?.uid));
+          setIsLoadingOtherRatings(false);
+
         } else {
           setError("Joke not found. It might have been deleted or the ID is incorrect.");
+          setIsLoadingRating(false);
+          setIsLoadingOtherRatings(false);
         }
       } catch (err) {
-        console.error("Error fetching joke or rating:", err);
-        setError("Failed to load the joke or your rating. Please try again later.");
+        console.error("Error fetching joke or ratings:", err);
+        setError("Failed to load the joke or ratings. Please try again later.");
+        setIsLoadingRating(false);
+        setIsLoadingOtherRatings(false);
       } finally {
         setIsLoading(false);
-        setIsLoadingRating(false);
       }
     }
 
     if (!loadingContext && !authLoading && jokeId) {
-      fetchJokeAndRating();
+      fetchJokeAndRatings();
     } else if (!jokeId && !loadingContext && !authLoading) {
       setError("Joke ID is missing.");
       setIsLoading(false);
       setIsLoadingRating(false);
+      setIsLoadingOtherRatings(false);
     }
-  }, [jokeId, user, getJokeById, getUserRatingForJoke, loadingContext, authLoading]);
+  }, [jokeId, user, getJokeById, getUserRatingForJoke, fetchAllRatingsForJoke, loadingContext, authLoading]);
 
 
   const handleRatingSubmit = async (e: React.FormEvent) => {
@@ -110,7 +127,6 @@ export default function JokeShowPage() {
     setIsSubmittingRating(true);
     try {
       await submitUserRating(joke.id, ratingInputValue, commentInputValue);
-      // Optimistically update local state or refetch
       const updatedRating = await getUserRatingForJoke(joke.id);
        if (updatedRating) {
          setCurrentUserRating(updatedRating);
@@ -118,9 +134,12 @@ export default function JokeShowPage() {
          setCommentInputValue(updatedRating.comment || '');
        }
       toast({ title: 'Success', description: currentUserRating ? 'Your rating has been updated.' : 'Your rating has been submitted.' });
+      
+      // Refetch all ratings to update community feedback section
+      const allRatings = await fetchAllRatingsForJoke(joke.id);
+      setOtherUserRatings(allRatings.filter(rating => rating.userId !== user?.uid));
+
     } catch (err) {
-      // Error toast is usually handled within submitUserRating in context if it throws a custom error
-      // or specific handling can be added here.
       console.error("Error submitting rating from page:", err);
       toast({ title: 'Rating Submission Error', description: 'Could not submit your rating.', variant: 'destructive'});
     } finally {
@@ -240,11 +259,11 @@ export default function JokeShowPage() {
         </Card>
 
         {/* User Rating Section */}
-        <Card className="shadow-lg">
+        <Card className="shadow-lg mb-8">
           <CardHeader>
             <CardTitle className="text-xl flex items-center">
                 <MessageSquare className="mr-2 h-5 w-5 text-primary"/> 
-                {user && currentUserRating ? 'Update Your Rating' : 'Rate This Joke'}
+                {currentUserRating ? 'Update Your Rating' : 'Rate This Joke'}
             </CardTitle>
             {!user && <CardDescription>Please <Link href={`/auth?redirect=/joke/${joke.id}`} className="underline text-primary hover:text-primary/80">log in or sign up</Link> to rate this joke.</CardDescription>}
           </CardHeader>
@@ -294,11 +313,43 @@ export default function JokeShowPage() {
           )}
         </Card>
 
+        {/* Community Feedback Section */}
+        <Card className="shadow-lg">
+            <CardHeader>
+                <CardTitle className="text-xl flex items-center">
+                    <Users className="mr-2 h-5 w-5 text-primary" />
+                    Community Feedback
+                </CardTitle>
+            </CardHeader>
+            <CardContent>
+                {isLoadingOtherRatings ? (
+                    <div className="flex items-center justify-center p-4">
+                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                        <span className="ml-2 text-muted-foreground">Loading community ratings...</span>
+                    </div>
+                ) : otherUserRatings.length === 0 ? (
+                    <p className="text-muted-foreground">No other community feedback yet. Be the first to share your thoughts after rating!</p>
+                ) : (
+                    <div className="space-y-6">
+                        {otherUserRatings.map((rating, index) => (
+                            <div key={rating.id}>
+                                <StarRating rating={rating.ratingValue} readOnly size={20} starClassName="text-primary" />
+                                {rating.comment && (
+                                    <p className="mt-2 text-sm text-foreground bg-muted/50 p-3 rounded-md whitespace-pre-wrap">{rating.comment}</p>
+                                )}
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                    Rated on: {format(rating.updatedAt, 'MMMM d, yyyy')}
+                                </p>
+                                {index < otherUserRatings.length - 1 && <Separator className="my-4" />}
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+
       </div>
     </div>
   );
 }
-
-    
-
     
