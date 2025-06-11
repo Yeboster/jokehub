@@ -6,43 +6,39 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useJokes, type FilterParams } from '@/contexts/JokeContext';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'; // Card components might still be used for page structure, not for individual jokes
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowRight, Laugh, Loader2, PlusCircle } from 'lucide-react';
 import type { Joke } from '@/lib/types';
-import JokeListItem from '@/components/joke-list-item'; // Import JokeListItem
-
-// StaticJokeDisplay component removed
+import JokeListItem from '@/components/joke-list-item';
 
 export default function LandingPage() {
   const { user, loading: authLoading } = useAuth();
   const { jokes, loadJokesWithFilters, loadingInitialJokes } = useJokes();
   const [displayedJokes, setDisplayedJokes] = useState<Joke[]>([]);
 
-  const hardcodedJokesFallback = [ // Renamed for clarity
+  const hardcodedJokesFallback = [
     { id: 'hc1', text: "Why don't scientists trust atoms? Because they make up everything!", category: "Science", dateAdded: new Date(), used: false, funnyRate: 0, userId: 'public-fallback' },
     { id: 'hc2', text: "Why did the scarecrow win an award? Because he was outstanding in his field!", category: "Puns", dateAdded: new Date(), used: false, funnyRate: 0, userId: 'public-fallback' },
     { id: 'hc3', text: "What do you call fake spaghetti? An impasta!", category: "Food", dateAdded: new Date(), used: false, funnyRate: 0, userId: 'public-fallback' },
   ];
 
   useEffect(() => {
-    // Always load public jokes for the landing page
     const filters: FilterParams = {
       selectedCategories: [],
       filterFunnyRate: -1,
       showOnlyUsed: false,
-      scope: 'public', // Always public
+      scope: 'public',
     };
     loadJokesWithFilters(filters);
-  }, [loadJokesWithFilters]); // Removed user and authLoading dependencies as scope is always public
+  }, [loadJokesWithFilters]);
 
   useEffect(() => {
     if (jokes && jokes.length > 0) {
       setDisplayedJokes(jokes.slice(0, 3));
     } else if (!loadingInitialJokes && (!jokes || jokes.length === 0)) {
-      // If loading is finished and no jokes fetched, use fallback
       setDisplayedJokes(hardcodedJokesFallback);
     } else {
-      setDisplayedJokes([]); // Clear if loading or jokes become null for some reason
+      setDisplayedJokes([]);
     }
   }, [jokes, loadingInitialJokes]);
 
@@ -65,7 +61,7 @@ export default function LandingPage() {
         <h2 className="text-3xl font-bold text-center text-primary mb-10">
           A Taste of Humor
         </h2>
-        {isLoading && displayedJokes.length === 0 ? ( // Show loader only if no jokes are displayed yet
+        {isLoading && displayedJokes.length === 0 ? (
           <div className="flex justify-center items-center min-h-[150px]">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <p className="ml-2 text-muted-foreground">Loading jokes...</p>
@@ -73,7 +69,7 @@ export default function LandingPage() {
         ) : displayedJokes.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5 md:gap-6 max-w-5xl mx-auto">
             {displayedJokes.map((joke) => (
-              <JokeListItem key={joke.id} joke={joke} /> // Use JokeListItem
+              <JokeListItem key={joke.id} joke={joke} />
             ))}
           </div>
         ) : (
