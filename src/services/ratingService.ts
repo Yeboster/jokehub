@@ -52,17 +52,9 @@ export async function submitUserRating(
 
   if (!querySnapshot.empty) {
     const existingRatingDocRef = querySnapshot.docs[0].ref;
-    // If comment is explicitly set to null or undefined or empty string, and it exists in DB, remove it.
-    if (ratingData.comment === null && querySnapshot.docs[0].data().comment) {
-      ratingData.comment = deleteField();
-    }
     await updateDoc(existingRatingDocRef, ratingData);
   } else {
     ratingData.createdAt = now;
-    // Only add comment to new doc if it's not null
-    if (ratingData.comment === null) {
-        delete ratingData.comment; // Don't store 'comment: null' for new docs
-    }
     await addDoc(ratingsCollectionRef, ratingData);
   }
 }
