@@ -5,7 +5,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { format } from 'date-fns';
-import { Loader2, ArrowLeft, ShieldAlert, CalendarDays, Tag, Star as StarIcon, Check, MessageSquare, Send, Users, Edit3 } from 'lucide-react';
+import { Loader2, ArrowLeft, ShieldAlert, CalendarDays, Tag, Star as StarIcon, Check, MessageSquare, Send, Users, Edit3, UserCircle } from 'lucide-react';
 
 import type { Joke, UserRating } from '@/lib/types';
 import { useJokes } from '@/contexts/JokeContext';
@@ -357,3 +357,4 @@ export default function JokeShowPage() {
     </div>
   );
 }
+
