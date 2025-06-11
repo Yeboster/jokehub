@@ -6,78 +6,48 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useJokes, type FilterParams } from '@/contexts/JokeContext';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-// Input, Label, Dialog, ScrollArea removed as AddJokeForm modal is gone
-import { ArrowRight, Laugh, Loader2, PlusCircle, Wand2 } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'; // Card components might still be used for page structure, not for individual jokes
+import { ArrowRight, Laugh, Loader2, PlusCircle } from 'lucide-react';
 import type { Joke } from '@/lib/types';
-// AddJokeForm and related types are no longer used here for a modal
-import { useToast } from '@/hooks/use-toast';
+import JokeListItem from '@/components/joke-list-item'; // Import JokeListItem
 
-
-const StaticJokeDisplay: React.FC<{ text: string; category: string }> = ({ text, category }) => (
-  <Card className="bg-card shadow-lg rounded-lg text-left hover:shadow-xl transition-shadow duration-300">
-    <CardHeader className="pb-3 pt-5 px-5">
-      <CardTitle className="text-lg font-medium text-primary text-center">{category}</CardTitle>
-    </CardHeader>
-    <CardContent className="px-5 pb-5">
-      <p className="text-foreground leading-relaxed">{text}</p>
-    </CardContent>
-  </Card>
-);
+// StaticJokeDisplay component removed
 
 export default function LandingPage() {
   const { user, loading: authLoading } = useAuth();
-  const { jokes, loadJokesWithFilters, loadingInitialJokes } = useJokes(); // addJoke removed
+  const { jokes, loadJokesWithFilters, loadingInitialJokes } = useJokes();
   const [displayedJokes, setDisplayedJokes] = useState<Joke[]>([]);
-  // Removed toast from here as modal is gone, errors/success for add joke will be on /add-joke page
-  // const { toast } = useToast();
 
-  // Removed modal and AI generation states
-  // const [isAddJokeModalOpen, setIsAddJokeModalOpen] = useState(false);
-  // const [isGeneratingJoke, setIsGeneratingJoke] = useState(false);
-  // const [aiTopicHint, setAiTopicHint] = useState<string | undefined>();
-  // const [aiGeneratedText, setAiGeneratedText] = useState<string | undefined>();
-  // const [aiGeneratedCategory, setAiGeneratedCategory] = useState<string | undefined>();
-
-
-  const hardcodedJokes = [
-    { id: 'hc1', text: "Why don't scientists trust atoms? Because they make up everything!", category: "Science", dateAdded: new Date(), used: false, funnyRate: 0, userId: 'public' },
-    { id: 'hc2', text: "Why did the scarecrow win an award? Because he was outstanding in his field!", category: "Puns", dateAdded: new Date(), used: false, funnyRate: 0, userId: 'public' },
-    { id: 'hc3', text: "What do you call fake spaghetti? An impasta!", category: "Food", dateAdded: new Date(), used: false, funnyRate: 0, userId: 'public' },
+  const hardcodedJokesFallback = [ // Renamed for clarity
+    { id: 'hc1', text: "Why don't scientists trust atoms? Because they make up everything!", category: "Science", dateAdded: new Date(), used: false, funnyRate: 0, userId: 'public-fallback' },
+    { id: 'hc2', text: "Why did the scarecrow win an award? Because he was outstanding in his field!", category: "Puns", dateAdded: new Date(), used: false, funnyRate: 0, userId: 'public-fallback' },
+    { id: 'hc3', text: "What do you call fake spaghetti? An impasta!", category: "Food", dateAdded: new Date(), used: false, funnyRate: 0, userId: 'public-fallback' },
   ];
 
   useEffect(() => {
-    if (!authLoading) {
-      const filters: FilterParams = {
-        selectedCategories: [],
-        filterFunnyRate: -1,
-        showOnlyUsed: false,
-        scope: user ? 'user' : 'public', 
-      };
-      loadJokesWithFilters(filters);
-    }
-  }, [user, authLoading, loadJokesWithFilters]);
+    // Always load public jokes for the landing page
+    const filters: FilterParams = {
+      selectedCategories: [],
+      filterFunnyRate: -1,
+      showOnlyUsed: false,
+      scope: 'public', // Always public
+    };
+    loadJokesWithFilters(filters);
+  }, [loadJokesWithFilters]); // Removed user and authLoading dependencies as scope is always public
 
   useEffect(() => {
-    if (user) {
-      setDisplayedJokes((jokes || []).slice(0, 3));
+    if (jokes && jokes.length > 0) {
+      setDisplayedJokes(jokes.slice(0, 3));
+    } else if (!loadingInitialJokes && (!jokes || jokes.length === 0)) {
+      // If loading is finished and no jokes fetched, use fallback
+      setDisplayedJokes(hardcodedJokesFallback);
     } else {
-      if (jokes && jokes.length > 0) { 
-        setDisplayedJokes(jokes.slice(0,3));
-      } else if (!loadingInitialJokes) { 
-         setDisplayedJokes(hardcodedJokes);
-      }
+      setDisplayedJokes([]); // Clear if loading or jokes become null for some reason
     }
-  }, [user, jokes, loadingInitialJokes]);
+  }, [jokes, loadingInitialJokes]);
 
 
   const isLoading = authLoading || loadingInitialJokes;
-
-  // Removed AI generation and add joke modal handlers
-  // handleGenerateJokeInModal
-  // handleAiJokeSubmittedFromModal
-  // handleAddJokeFromFormInModal
-
 
   return (
     <div className="container mx-auto px-4 py-10 sm:py-16 text-center">
@@ -93,9 +63,9 @@ export default function LandingPage() {
 
       <section className="mb-12 sm:mb-16">
         <h2 className="text-3xl font-bold text-center text-primary mb-10">
-          {user ? "Your Latest Laughs" : "A Taste of Humor"} 
+          A Taste of Humor
         </h2>
-        {isLoading ? (
+        {isLoading && displayedJokes.length === 0 ? ( // Show loader only if no jokes are displayed yet
           <div className="flex justify-center items-center min-h-[150px]">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <p className="ml-2 text-muted-foreground">Loading jokes...</p>
@@ -103,12 +73,12 @@ export default function LandingPage() {
         ) : displayedJokes.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5 md:gap-6 max-w-5xl mx-auto">
             {displayedJokes.map((joke) => (
-              <StaticJokeDisplay key={joke.id} text={joke.text} category={joke.category} />
+              <JokeListItem key={joke.id} joke={joke} /> // Use JokeListItem
             ))}
           </div>
         ) : (
           <p className="text-muted-foreground">
-            {user ? "You haven't added any jokes yet. Go to 'Jokes' page to add some!" : "No sample jokes to display right now."}
+            No sample jokes to display right now. Check back soon!
           </p>
         )}
       </section>
@@ -132,7 +102,7 @@ export default function LandingPage() {
         {user && (
            <Button size="lg" variant="outline" asChild className="px-6 py-3 rounded-lg border-primary/50 text-primary hover:bg-primary/5 hover:text-primary">
             <Link href="/jokes">
-              View My Collection 
+              View My Collection
             </Link>
           </Button>
         )}
