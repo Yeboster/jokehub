@@ -33,6 +33,7 @@ interface UpdateJokeData {
     text?: string;
     category?: string;
     funnyRate?: number;
+    used?: boolean; // Added used flag
 }
 
 export interface FilterParams { // Exporting for use in page components
@@ -65,7 +66,7 @@ const JokeContext = createContext<JokeContextProps | undefined>(undefined);
 
 const JOKES_COLLECTION = 'jokes';
 const CATEGORIES_COLLECTION = 'categories';
-const JOKE_RATINGS_COLLECTION = 'jokeRatings'; // Defined the constant
+const JOKE_RATINGS_COLLECTION = 'jokeRatings';
 
 const defaultFilters: FilterParams = {
   selectedCategories: [],
@@ -456,7 +457,7 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
       const jokeDocRef = doc(db, JOKES_COLLECTION, jokeId);
-      const dataToUpdate: Record<string, any> = {};
+      const dataToUpdate: Record<string, any> = {}; // Use Record for more flexibility
       try {
          const docSnap = await getDoc(jokeDocRef);
          if (!docSnap.exists() || docSnap.data()?.userId !== user.uid) {
@@ -469,6 +470,7 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
          }
          if (updatedData.text !== undefined) dataToUpdate.text = updatedData.text;
          if (updatedData.funnyRate !== undefined) dataToUpdate.funnyRate = updatedData.funnyRate;
+         if (updatedData.used !== undefined) dataToUpdate.used = updatedData.used; // Add used flag to dataToUpdate
 
          if (Object.keys(dataToUpdate).length === 0) {
              toast({ title: 'No Changes', description: 'No changes were detected.', variant: 'default' });
@@ -507,21 +509,19 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
         userId: user.uid,
         ratingValue,
         updatedAt: now,
-        comment: null
       };
 
 
       if (!querySnapshot.empty) {
         // Update existing rating
         const existingRatingDocRef = querySnapshot.docs[0].ref;
-        // Make sure 'createdAt' is not part of the update data unless you want to overwrite it (which is usually not the case)
         const updateData = {...ratingData};
-        delete updateData.createdAt; // createdAt should not be updated
+        delete updateData.createdAt; 
 
         if (comment && comment.trim() !== '') {
             updateData.comment = comment.trim();
         } else {
-            updateData.comment = null
+            updateData.comment = deleteField(); // Use deleteField to remove the comment
         }
 
         await updateDoc(existingRatingDocRef, updateData);
@@ -531,14 +531,14 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (comment && comment.trim() !== '') {
             ratingData.comment = comment.trim();
         }
-        ratingData.createdAt = now; // Set createdAt only for new ratings
+        ratingData.createdAt = now; 
         await addDoc(ratingsCollectionRef, ratingData);
         toast({ title: 'Rating Submitted', description: 'Your rating has been successfully submitted.' });
       }
     } catch (error: any) {
       console.error("Error submitting user rating:", error);
       toast({ title: 'Rating Error', description: error.message || 'Failed to submit your rating.', variant: 'destructive' });
-      throw error; // Re-throw to be handled by the caller if needed
+      throw error; 
     }
   }, [user, toast]);
 

@@ -14,9 +14,10 @@ import { useJokes } from '@/contexts/JokeContext';
 import Header from '@/components/header';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
@@ -33,6 +34,7 @@ const editJokeFormSchema = z.object({
   text: z.string().min(1, 'Joke text cannot be empty.'),
   category: z.string().trim().min(1, 'Category cannot be empty. Type a new one or select from suggestions.'),
   funnyRate: z.coerce.number().min(0).max(5).optional().default(0),
+  used: z.boolean().optional().default(false),
 });
 
 type EditJokeFormValues = z.infer<typeof editJokeFormSchema>;
@@ -54,7 +56,7 @@ export default function EditJokePage() {
 
   const form = useForm<EditJokeFormValues>({
     resolver: zodResolver(editJokeFormSchema),
-    defaultValues: { text: '', category: '', funnyRate: 0 },
+    defaultValues: { text: '', category: '', funnyRate: 0, used: false },
   });
 
   useEffect(() => {
@@ -80,6 +82,7 @@ export default function EditJokePage() {
               text: fetchedJoke.text,
               category: fetchedJoke.category,
               funnyRate: fetchedJoke.funnyRate,
+              used: fetchedJoke.used,
             });
             setCategorySearch(fetchedJoke.category);
           }
@@ -111,7 +114,7 @@ export default function EditJokePage() {
         return;
     }
 
-     if (data.text === joke.text && data.category === joke.category && data.funnyRate === joke.funnyRate) {
+     if (data.text === joke.text && data.category === joke.category && data.funnyRate === joke.funnyRate && data.used === joke.used) {
          toast({ title: 'No Changes', description: 'No changes were made to the joke.' });
          router.push('/jokes'); // Redirect to the main jokes page
          return;
@@ -119,7 +122,7 @@ export default function EditJokePage() {
 
     setIsSubmitting(true);
     try {
-      await updateJoke(joke.id, data);
+      await updateJoke(joke.id, data); // data now includes 'used'
       toast({ title: 'Success', description: 'Joke updated successfully!' });
       router.push('/jokes'); // Redirect to the main jokes page
     } catch (error) {
@@ -215,7 +218,7 @@ export default function EditJokePage() {
       <Card className="max-w-2xl mx-auto">
         <CardHeader>
           <CardTitle>Update Joke Details</CardTitle>
-          <CardDescription>Make changes to the joke text, category, or rating.</CardDescription>
+          <CardDescription>Make changes to the joke text, category, rating, or usage status.</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -231,7 +234,6 @@ export default function EditJokePage() {
                         <FormControl>
                           <PopoverTrigger asChild>
                               <Button variant="outline" role="combobox"
-                                // aria-expanded is handled by PopoverTrigger
                                 className={cn("w-full justify-between", !field.value && "text-muted-foreground")}
                                 disabled={isFormDisabled || loadingCategories} >
                                <span className="truncate">
@@ -274,6 +276,27 @@ export default function EditJokePage() {
                     <FormMessage />
                   </FormItem>
               )} />
+               <FormField
+                control={form.control}
+                name="used"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                    <div className="space-y-0.5">
+                      <FormLabel>Joke Used</FormLabel>
+                      <FormDescription>
+                        Mark this joke as used (e.g., told in a show).
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        disabled={isFormDisabled}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
               <div className="flex flex-col sm:flex-row gap-2 justify-end">
                  <Button type="button" variant="outline" onClick={() => router.push('/jokes')} disabled={isSubmitting}>
                     <ArrowLeft className="mr-2 h-4 w-4" /> Cancel
