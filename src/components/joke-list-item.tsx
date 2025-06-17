@@ -11,7 +11,7 @@ import type { Joke } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import StarRating from '@/components/StarRating'; // Import StarRating
+import StarRating from '@/components/StarRating';
 import { useJokes } from '@/contexts/JokeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
@@ -55,9 +55,9 @@ const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
         </CardContent>
       </Link>
       <CardFooter className="p-4 border-t border-border/50 flex items-center justify-between">
-        {/* Left side: Details */}
+        {/* Left side: Date & Optional Owner Info */}
         <div className="flex items-center flex-nowrap text-xs text-muted-foreground">
-            <div className="flex items-center gap-1 flex-shrink-0"> {/* Date */}
+            <div className="flex items-center gap-1 flex-shrink-0">
                 <CalendarDays className="h-4 w-4 mr-1" />
                 {format(joke.dateAdded, 'PP')}
             </div>
@@ -80,7 +80,7 @@ const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
             )}
         </div>
 
-        {/* Right side: Actions - Average Rating and Owner's Toggle Used */}
+        {/* Right side: Average Rating and Owner's Toggle Used */}
         <div className="flex items-center gap-2">
             {joke.ratingCount && joke.ratingCount > 0 ? (
                 <TooltipProvider delayDuration={300}>
@@ -93,9 +93,6 @@ const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
                                     size={14}
                                     starClassName="text-primary"
                                 />
-                                <span className="text-xs text-muted-foreground">
-                                    ({joke.ratingCount})
-                                </span>
                             </div>
                         </TooltipTrigger>
                         <TooltipContent>
