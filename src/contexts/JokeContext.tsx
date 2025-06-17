@@ -15,7 +15,7 @@ export type FilterParams = jokeService.FilterParams;
 
 interface JokeContextProps {
   jokes: Joke[] | null;
-  categories: Category[] | null;
+  categories: Category[] | null; // This will now hold all categories from the collection
   hasMoreJokes: boolean;
   loadingInitialJokes: boolean;
   loadingMoreJokes: boolean;
@@ -25,7 +25,7 @@ interface JokeContextProps {
   rateJoke: (id: string, rating: number) => Promise<void>;
   updateJokeCategory: (jokeId: string, newCategoryName: string) => Promise<void>;
   getJokeById: (jokeId: string) => Promise<Joke | null>;
-  updateJoke: (jokeId: string, updatedData: Partial<Omit<Joke, 'id' | 'dateAdded' | 'userId'>>) => Promise<void>; // 'used' can be updated via updateJoke
+  updateJoke: (jokeId: string, updatedData: Partial<Omit<Joke, 'id' | 'dateAdded' | 'userId'>>) => Promise<void>;
   loadJokesWithFilters: (filters: FilterParams) => Promise<void>;
   loadMoreFilteredJokes: () => Promise<void>;
   submitUserRating: (jokeId: string, stars: number, comment?: string) => Promise<void>;
@@ -38,7 +38,7 @@ const JokeContext = createContext<JokeContextProps | undefined>(undefined);
 const defaultFilters: FilterParams = {
   selectedCategories: [],
   filterFunnyRate: -1,
-  usageStatus: 'all', // Updated from showOnlyUsed
+  usageStatus: 'all',
   scope: 'public',
 };
 
@@ -112,6 +112,7 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 
   const loadMoreFilteredJokes = useCallback(async () => {
+    // The checks for loadingMoreJokes and hasMoreJokes are inside fetchJokes for the isLoadMore scenario.
     await fetchJokes(activeFiltersRef.current, true);
   }, [fetchJokes]);
 
@@ -122,35 +123,37 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoadingInitialJokes(true);
       return;
     }
-    if (!user) {
-        loadJokesWithFilters({ ...defaultFilters, scope: 'public' });
-        categoryService.subscribeToCategories(
-          "public", 
-          (newCategories) => setCategories(newCategories),
-          (error) => {
-            toast({ title: 'Error fetching public categories', description: error.message, variant: 'destructive' });
-            setCategories([]);
-          }
-        );
-        return;
-    }
 
-    const unsubscribeCategories = categoryService.subscribeToCategories(
-      user.uid,
+    // Subscribe to all categories from the collection for filtering purposes
+    const unsubscribeCategories = categoryService.subscribeToAllCategoriesFromCollection(
       (newCategories) => {
         setCategories(newCategories);
       },
       (error) => {
-        toast({ title: 'Error fetching categories', description: error.message, variant: 'destructive' });
-        setCategories([]);
+        toast({ title: 'Error fetching system categories', description: error.message, variant: 'destructive' });
+        setCategories([]); // Or null, depending on how you want to handle errors
       }
     );
     
-    loadJokesWithFilters(activeFiltersRef.current);
-
+    // Joke loading logic remains conditional on user for 'user' scope
+    // And initial load logic based on active filters.
+    const currentFilters = activeFiltersRef.current;
+    if (user) {
+        loadJokesWithFilters(currentFilters);
+    } else {
+        // If user logs out or is not logged in, ensure scope is not 'user'
+        if (currentFilters.scope === 'user') {
+            const publicFilters = { ...currentFilters, scope: 'public' as const };
+            // activeFiltersRef.current will be updated by loadJokesWithFilters
+            loadJokesWithFilters(publicFilters);
+        } else {
+            loadJokesWithFilters(currentFilters);
+        }
+    }
 
     return () => unsubscribeCategories();
   }, [authLoading, user, toast, loadJokesWithFilters]);
+
 
   const handleApiCall = useCallback(
     async <T,>(
@@ -250,7 +253,6 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
     async (jokeId: string): Promise<Joke | null> => {
       try {
         const joke = await jokeService.getJokeById(jokeId);
-        // No success toast for simple gets, as it's a read operation.
         return joke;
       } catch (error: any) {
         console.error('Error in getJokeById (JokeContext):', error);
@@ -258,7 +260,7 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return null;
       }
     },
-    [toast] // Depends on toast
+    [toast] 
   );
   
   const updateJoke = useCallback(
@@ -278,7 +280,7 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!user) throw new Error("User not authenticated");
       return handleApiCall(
         () => ratingService.submitUserRating(jokeId, stars, user.uid, comment),
-        'Rating submitted successfully.'
+        'Rating submitted successfully.' // Reloading jokes after rating is handled by ratingService updating joke doc
       )!;
     },
     [handleApiCall, user]
@@ -339,4 +341,3 @@ export const useJokes = (): JokeContextProps => {
   }
   return context;
 };
-

@@ -44,12 +44,13 @@ export async function ensureCategoryExists(categoryName: string, userId: string)
 }
 
 /**
- * Subscribes to category updates for a user.
+ * Subscribes to category updates for a specific user.
  * @param userId - The ID of the user.
  * @param onUpdate - Callback function to handle category updates.
+ * @param onError - Callback function for errors.
  * @returns An unsubscribe function.
  */
-export function subscribeToCategories(
+export function subscribeToUserCategories(
   userId: string,
   onUpdate: (categories: Category[]) => void,
   onError: (error: Error) => void
@@ -72,8 +73,43 @@ export function subscribeToCategories(
       .filter((cat): cat is Category => cat !== null);
     onUpdate(categories);
   }, (error) => {
-    console.error('Error fetching categories:', error);
-    onError(new Error('Could not load categories.'));
+    console.error('Error fetching user categories:', error);
+    onError(new Error('Could not load user categories.'));
+  });
+
+  return unsubscribe;
+}
+
+/**
+ * Subscribes to all category documents in the collection.
+ * @param onUpdate - Callback function to handle category updates.
+ * @param onError - Callback function for errors.
+ * @returns An unsubscribe function.
+ */
+export function subscribeToAllCategoriesFromCollection(
+  onUpdate: (categories: Category[]) => void,
+  onError: (error: Error) => void
+) {
+  const q = query(
+    collection(db, CATEGORIES_COLLECTION),
+    orderBy('name', 'asc') 
+  );
+
+  const unsubscribe = onSnapshot(q, (snapshot) => {
+    const categories = snapshot.docs
+      .map((doc) => {
+        const data = doc.data();
+        // Basic validation, ensure name exists and is a non-empty string
+        if (data && typeof data.name === 'string' && data.name.trim() !== '' && typeof data.userId === 'string') {
+          return { id: doc.id, name: data.name.trim(), userId: data.userId };
+        }
+        return null; // Skip malformed documents
+      })
+      .filter((cat): cat is Category => cat !== null); // Type guard to filter out nulls
+    onUpdate(categories);
+  }, (error) => {
+    console.error('Error fetching all categories:', error);
+    onError(new Error('Could not load all categories.'));
   });
 
   return unsubscribe;

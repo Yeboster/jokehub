@@ -35,7 +35,7 @@ function JokesPageComponent() {
   const { toast } = useToast();
   const {
     jokes,
-    categories: allCategoriesFromContext,
+    categories: allCategoriesFromContext, // Now contains all categories from the collection
     loadJokesWithFilters,
     loadMoreFilteredJokes,
     hasMoreJokes,
@@ -53,9 +53,8 @@ function JokesPageComponent() {
   const [tempUsageStatus, setTempUsageStatus] = useState<FilterParams['usageStatus']>(defaultPageFilters.usageStatus);
   const [categorySearch, setCategorySearch] = useState('');
 
-  // Effect 1: Sync URL query params to activeFilters state
   useEffect(() => {
-    if (authLoading) return; // Wait for auth to be resolved
+    if (authLoading) return;
 
     const queryScope = searchParams.get('scope') as FilterParams['scope'] || defaultPageFilters.scope;
     const queryCategoriesRaw = searchParams.get('categories');
@@ -65,7 +64,7 @@ function JokesPageComponent() {
     let parsedFunnyRate = defaultPageFilters.filterFunnyRate;
     if (queryFunnyRateRaw !== null) {
         const tempRate = parseInt(queryFunnyRateRaw, 10);
-        if (!isNaN(tempRate) && tempRate >= -1 && tempRate <= 5) { // Validate rate
+        if (!isNaN(tempRate) && tempRate >= -1 && tempRate <= 5) {
             parsedFunnyRate = tempRate;
         }
     }
@@ -85,14 +84,12 @@ function JokesPageComponent() {
     };
     
     setActiveFilters(prevFilters => {
-      // Avoid unnecessary updates if filters are already the same
       if (JSON.stringify(prevFilters) === JSON.stringify(filtersFromUrl)) {
         return prevFilters;
       }
       return filtersFromUrl;
     });
 
-    // Sync modal's temp state with the derived filters
     setTempScope(filtersFromUrl.scope);
     setTempSelectedCategories([...filtersFromUrl.selectedCategories]);
     setTempFilterFunnyRate(filtersFromUrl.filterFunnyRate);
@@ -100,37 +97,34 @@ function JokesPageComponent() {
 
   }, [searchParams, user, authLoading]);
 
-  // Effect 2: Load jokes when activeFilters, user, or authLoading changes
   useEffect(() => {
     if (authLoading) {
       return; 
     }
-    // activeFilters is derived from URL & user state by Effect 1
     loadJokesWithFilters(activeFilters);
 
   }, [user, authLoading, activeFilters, loadJokesWithFilters]);
 
-
+  // modalCategoryNames now represents all unique category names from the system
   const modalCategoryNames = useMemo(() => {
     if (!allCategoriesFromContext) return [];
-    if (tempScope === 'user' && user) {
-      return Array.from(new Set(allCategoriesFromContext.filter(cat => cat.userId === user.uid).map(cat => cat.name))).sort();
-    }
-    return Array.from(new Set(allCategoriesFromContext.map(cat => cat.name))).sort();
-  }, [allCategoriesFromContext, tempScope, user]);
+    // Get unique names from all categories fetched by the context
+    const distinctNames = Array.from(new Set(allCategoriesFromContext.map(cat => cat.name)));
+    return distinctNames.sort();
+  }, [allCategoriesFromContext]);
+
 
   const jokesToDisplay = useMemo(() => jokes ?? [], [jokes]);
 
   const handleOpenFilterModal = () => {
-    // Modal temp state is already synced by Effect 1 when URL/activeFilters change.
-    // Just ensure category search is reset.
     setCategorySearch('');
     setIsFilterModalOpen(true);
   };
 
   const handleApplyFilters = () => {
-    const validCategoriesForNewScope = modalCategoryNames;
-    const validatedSelectedCategories = tempSelectedCategories.filter(cat => validCategoriesForNewScope.includes(cat));
+    // Validate selected categories against the available modalCategoryNames
+    // (though modalCategoryNames is now global, this ensures consistency if it were to change)
+    const validatedSelectedCategories = tempSelectedCategories.filter(cat => modalCategoryNames.includes(cat));
 
     const newFilters: FilterParams = {
       scope: tempScope,
@@ -160,7 +154,7 @@ function JokesPageComponent() {
 
   const handleClearFilters = () => {
     setCategorySearch('');
-    router.push('/jokes'); // This will trigger Effect 1 to reset activeFilters and temp states
+    router.push('/jokes');
   };
 
 
@@ -219,7 +213,6 @@ function JokesPageComponent() {
       <div className="mb-6 p-4 flex items-center gap-x-4 gap-y-3 border-b pb-6">
         <Dialog open={isFilterModalOpen} onOpenChange={(isOpen) => {
           if (!isOpen) { 
-            // When modal closes, ensure temp state resets to currently active (URL-derived) filters
             setTempScope(activeFilters.scope);
             setTempSelectedCategories([...activeFilters.selectedCategories]);
             setTempFilterFunnyRate(activeFilters.filterFunnyRate);
@@ -253,13 +246,12 @@ function JokesPageComponent() {
                   onValueChange={(value: FilterParams['scope']) => {
                     if (value === 'user' && !user) {
                       toast({ title: 'Login Required', description: 'Log in to see your jokes.', variant: 'destructive'});
-                      setTempScope('public'); // Reset to public if user tries to select My Jokes without being logged in
+                      setTempScope('public'); 
                     } else {
                       setTempScope(value);
                     }
-                     // Categories might change based on scope, so reset selected ones
-                    setTempSelectedCategories([]);
-                    setCategorySearch('');
+                    // If scope changes, selected categories might need validation or reset if categories were scope-dependent.
+                    // Since categories are now global for the filter, no reset needed here based on scope change.
                   }}
                   disabled={authLoading}
                 >
@@ -279,7 +271,7 @@ function JokesPageComponent() {
 
               <div className="grid grid-cols-4 items-start gap-4">
                 <Label htmlFor="modal-category-filter" className="text-right pt-2">
-                  {tempScope === 'user' && user ? 'My ' : ''}Categories
+                  Categories
                 </Label>
                 <Popover open={isCategoryPopoverOpen} onOpenChange={setIsCategoryPopoverOpen}>
                   <PopoverTrigger asChild className="col-span-3">
@@ -331,8 +323,8 @@ function JokesPageComponent() {
                           {filteredCategoryOptionsForModal.map((categoryName) => (
                             <CommandItem
                               key={categoryName}
-                              value={categoryName}
-                              onSelect={() => {
+                              value={categoryName} // Value for CMDK filtering/selection
+                              onSelect={() => { // onSelect uses the value (categoryName)
                                 toggleCategorySelectionInModal(categoryName);
                               }}
                             >
@@ -342,7 +334,7 @@ function JokesPageComponent() {
                                   tempSelectedCategories.includes(categoryName) ? "opacity-100" : "opacity-0"
                                 )}
                               />
-                              {categoryName}
+                              {categoryName} {/* Display label */}
                             </CommandItem>
                           ))}
                         </CommandGroup>
