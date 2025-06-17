@@ -1,19 +1,18 @@
 
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, Suspense } from 'react';
 import type { FilterParams } from '@/contexts/JokeContext';
 import { useJokes } from '@/contexts/JokeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import JokeList from '@/components/joke-list';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2, ChevronDown, RotateCcw, Filter as FilterIcon, Check, ChevronsUpDown, XIcon, PlusCircle, Users, User } from 'lucide-react';
 import { Label } from '@/components/ui/label';
-// Input, Select components from ui are used in the modal
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'; // Added RadioGroup
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Dialog, DialogTrigger, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -26,12 +25,13 @@ const defaultPageFilters: FilterParams = {
   scope: 'public',
   selectedCategories: [],
   filterFunnyRate: -1,
-  usageStatus: 'all', // Changed from showOnlyUsed
+  usageStatus: 'all',
 };
 
-export default function JokesPage() {
+function JokesPageComponent() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const {
     jokes,
@@ -47,27 +47,67 @@ export default function JokesPage() {
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [isCategoryPopoverOpen, setIsCategoryPopoverOpen] = useState(false);
 
-  // Temporary states for the filter modal
   const [tempScope, setTempScope] = useState<FilterParams['scope']>(defaultPageFilters.scope);
   const [tempSelectedCategories, setTempSelectedCategories] = useState<string[]>(defaultPageFilters.selectedCategories);
   const [tempFilterFunnyRate, setTempFilterFunnyRate] = useState<number>(defaultPageFilters.filterFunnyRate);
-  const [tempUsageStatus, setTempUsageStatus] = useState<FilterParams['usageStatus']>(defaultPageFilters.usageStatus); // Changed from tempShowOnlyUsed
+  const [tempUsageStatus, setTempUsageStatus] = useState<FilterParams['usageStatus']>(defaultPageFilters.usageStatus);
   const [categorySearch, setCategorySearch] = useState('');
 
-  // Effect for initial load and auth/filter changes
+  // Effect 1: Sync URL query params to activeFilters state
+  useEffect(() => {
+    if (authLoading) return; // Wait for auth to be resolved
+
+    const queryScope = searchParams.get('scope') as FilterParams['scope'] || defaultPageFilters.scope;
+    const queryCategoriesRaw = searchParams.get('categories');
+    const queryCategories = queryCategoriesRaw ? queryCategoriesRaw.split(',').filter(c => c.trim() !== '') : defaultPageFilters.selectedCategories;
+    
+    const queryFunnyRateRaw = searchParams.get('funnyRate');
+    let parsedFunnyRate = defaultPageFilters.filterFunnyRate;
+    if (queryFunnyRateRaw !== null) {
+        const tempRate = parseInt(queryFunnyRateRaw, 10);
+        if (!isNaN(tempRate) && tempRate >= -1 && tempRate <= 5) { // Validate rate
+            parsedFunnyRate = tempRate;
+        }
+    }
+
+    const queryUsageStatus = searchParams.get('usageStatus') as FilterParams['usageStatus'] || defaultPageFilters.usageStatus;
+
+    let effectiveScope = queryScope;
+    if (queryScope === 'user' && !user) {
+        effectiveScope = 'public'; 
+    }
+    
+    const filtersFromUrl: FilterParams = {
+      scope: effectiveScope,
+      selectedCategories: queryCategories,
+      filterFunnyRate: parsedFunnyRate,
+      usageStatus: ['all', 'used', 'unused'].includes(queryUsageStatus) ? queryUsageStatus : defaultPageFilters.usageStatus,
+    };
+    
+    setActiveFilters(prevFilters => {
+      // Avoid unnecessary updates if filters are already the same
+      if (JSON.stringify(prevFilters) === JSON.stringify(filtersFromUrl)) {
+        return prevFilters;
+      }
+      return filtersFromUrl;
+    });
+
+    // Sync modal's temp state with the derived filters
+    setTempScope(filtersFromUrl.scope);
+    setTempSelectedCategories([...filtersFromUrl.selectedCategories]);
+    setTempFilterFunnyRate(filtersFromUrl.filterFunnyRate);
+    setTempUsageStatus(filtersFromUrl.usageStatus);
+
+  }, [searchParams, user, authLoading]);
+
+  // Effect 2: Load jokes when activeFilters, user, or authLoading changes
   useEffect(() => {
     if (authLoading) {
-      return; // Wait for auth to settle
+      return; 
     }
+    // activeFilters is derived from URL & user state by Effect 1
+    loadJokesWithFilters(activeFilters);
 
-    let filtersToApply = { ...activeFilters };
-
-    if (activeFilters.scope === 'user' && !user) {
-      filtersToApply = { ...defaultPageFilters, scope: 'public' };
-      setActiveFilters(filtersToApply);
-    } else {
-      loadJokesWithFilters(filtersToApply);
-    }
   }, [user, authLoading, activeFilters, loadJokesWithFilters]);
 
 
@@ -82,11 +122,8 @@ export default function JokesPage() {
   const jokesToDisplay = useMemo(() => jokes ?? [], [jokes]);
 
   const handleOpenFilterModal = () => {
-    // Initialize modal's temp state from current active filters
-    setTempScope(activeFilters.scope);
-    setTempSelectedCategories([...activeFilters.selectedCategories]);
-    setTempFilterFunnyRate(activeFilters.filterFunnyRate);
-    setTempUsageStatus(activeFilters.usageStatus); // Changed from tempShowOnlyUsed
+    // Modal temp state is already synced by Effect 1 when URL/activeFilters change.
+    // Just ensure category search is reset.
     setCategorySearch('');
     setIsFilterModalOpen(true);
   };
@@ -99,26 +136,31 @@ export default function JokesPage() {
       scope: tempScope,
       selectedCategories: validatedSelectedCategories,
       filterFunnyRate: tempFilterFunnyRate,
-      usageStatus: tempUsageStatus, // Changed from showOnlyUsed
+      usageStatus: tempUsageStatus,
     };
-    setActiveFilters(newFilters); // This will trigger the useEffect to load jokes
+
+    const queryParams = new URLSearchParams();
+    if (newFilters.scope !== defaultPageFilters.scope) {
+      queryParams.set('scope', newFilters.scope);
+    }
+    if (newFilters.selectedCategories.length > 0) {
+      queryParams.set('categories', newFilters.selectedCategories.join(','));
+    }
+    if (newFilters.filterFunnyRate !== defaultPageFilters.filterFunnyRate) {
+      queryParams.set('funnyRate', newFilters.filterFunnyRate.toString());
+    }
+    if (newFilters.usageStatus !== defaultPageFilters.usageStatus) {
+      queryParams.set('usageStatus', newFilters.usageStatus);
+    }
+    
+    const queryString = queryParams.toString();
+    router.push(queryString ? `/jokes?${queryString}` : '/jokes');
     setIsFilterModalOpen(false);
   };
 
   const handleClearFilters = () => {
-    const clearedFilters: FilterParams = {
-      scope: 'public',
-      selectedCategories: [],
-      filterFunnyRate: -1,
-      usageStatus: 'all', // Changed from showOnlyUsed
-    };
-    setActiveFilters(clearedFilters); 
-
-    setTempScope(clearedFilters.scope);
-    setTempSelectedCategories(clearedFilters.selectedCategories);
-    setTempFilterFunnyRate(clearedFilters.filterFunnyRate);
-    setTempUsageStatus(clearedFilters.usageStatus); // Changed
     setCategorySearch('');
+    router.push('/jokes'); // This will trigger Effect 1 to reset activeFilters and temp states
   };
 
 
@@ -144,11 +186,12 @@ export default function JokesPage() {
     );
   }, [modalCategoryNames, categorySearch]);
 
-  const hasActiveAppliedFilters = 
+  const hasActiveAppliedFilters = useMemo(() => 
+    activeFilters.scope !== defaultPageFilters.scope ||
     activeFilters.selectedCategories.length > 0 || 
-    activeFilters.filterFunnyRate !== -1 || 
-    activeFilters.usageStatus !== 'all' || // Changed from showOnlyUsed
-    (user && activeFilters.scope === 'user');
+    activeFilters.filterFunnyRate !== defaultPageFilters.filterFunnyRate || 
+    activeFilters.usageStatus !== defaultPageFilters.usageStatus,
+  [activeFilters]);
 
   const pageTitle = activeFilters.scope === 'user' && user ? "My Joke Collection" : "All Jokes Feed";
   const pageDescription = activeFilters.scope === 'user' && user
@@ -176,10 +219,11 @@ export default function JokesPage() {
       <div className="mb-6 p-4 flex items-center gap-x-4 gap-y-3 border-b pb-6">
         <Dialog open={isFilterModalOpen} onOpenChange={(isOpen) => {
           if (!isOpen) { 
+            // When modal closes, ensure temp state resets to currently active (URL-derived) filters
             setTempScope(activeFilters.scope);
             setTempSelectedCategories([...activeFilters.selectedCategories]);
             setTempFilterFunnyRate(activeFilters.filterFunnyRate);
-            setTempUsageStatus(activeFilters.usageStatus); // Changed
+            setTempUsageStatus(activeFilters.usageStatus);
             setCategorySearch('');
           }
           setIsFilterModalOpen(isOpen);
@@ -209,12 +253,13 @@ export default function JokesPage() {
                   onValueChange={(value: FilterParams['scope']) => {
                     if (value === 'user' && !user) {
                       toast({ title: 'Login Required', description: 'Log in to see your jokes.', variant: 'destructive'});
-                      setTempScope('public');
+                      setTempScope('public'); // Reset to public if user tries to select My Jokes without being logged in
                     } else {
                       setTempScope(value);
-                      setTempSelectedCategories([]);
-                      setCategorySearch('');
                     }
+                     // Categories might change based on scope, so reset selected ones
+                    setTempSelectedCategories([]);
+                    setCategorySearch('');
                   }}
                   disabled={authLoading}
                 >
@@ -424,3 +469,15 @@ export default function JokesPage() {
   );
 }
 
+export default function JokesPage() {
+  return (
+    <Suspense fallback={
+      <div className="container mx-auto p-4 md:p-8 flex flex-col justify-center items-center min-h-[calc(100vh-8rem)]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="mt-2 text-muted-foreground">Loading page...</p>
+      </div>
+    }>
+      <JokesPageComponent />
+    </Suspense>
+  );
+}
