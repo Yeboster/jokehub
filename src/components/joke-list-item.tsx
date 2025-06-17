@@ -11,11 +11,10 @@ import type { Joke } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-// StarRating import might be removed if no other stars are used, but keep for now if other features might use it.
-// import StarRating from '@/components/StarRating';
+import StarRating from '@/components/StarRating'; // Import StarRating
 import { useJokes } from '@/contexts/JokeContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent, CardFooter } from '@/components/ui/card'; // CardHeader, CardTitle removed as not used
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
 interface JokeListItemProps {
@@ -81,9 +80,33 @@ const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
             )}
         </div>
 
-        {/* Right side: Actions - StarRating for owner's funnyRate is removed */}
-        <div className="flex items-center gap-1">
-            {/* Placeholder for average rating - currently empty */}
+        {/* Right side: Actions - Average Rating and Owner's Toggle Used */}
+        <div className="flex items-center gap-2">
+            {joke.ratingCount && joke.ratingCount > 0 ? (
+                <TooltipProvider delayDuration={300}>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <div className="flex items-center gap-1 cursor-default">
+                                <StarRating
+                                    rating={joke.averageRating || 0}
+                                    readOnly
+                                    size={14}
+                                    starClassName="text-primary"
+                                />
+                                <span className="text-xs text-muted-foreground">
+                                    ({joke.ratingCount})
+                                </span>
+                            </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p>Average rating: {(joke.averageRating || 0).toFixed(1)} from {joke.ratingCount} rating{joke.ratingCount === 1 ? '' : 's'}</p>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
+            ) : (
+                <span className="text-xs text-muted-foreground italic">No ratings yet</span>
+            )}
+
             {isOwner && (
               <TooltipProvider delayDuration={300}>
                 <Tooltip>
@@ -118,5 +141,3 @@ const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
 };
 
 export default JokeListItem;
-
-    
