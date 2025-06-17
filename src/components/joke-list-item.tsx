@@ -3,7 +3,7 @@
 
 import type { FC } from 'react';
 import { format } from 'date-fns';
-import { Check, Square, Loader2, UserCircle, CalendarDays } from 'lucide-react'; // Pencil removed, CalendarDays re-added for consistency if needed elsewhere, LucideStarIcon removed
+import { Check, Square, Loader2, UserCircle, CalendarDays } from 'lucide-react';
 import { useState } from 'react';
 import Link from 'next/link';
 
@@ -11,10 +11,11 @@ import type { Joke } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import StarRating from '@/components/StarRating';
+// StarRating import might be removed if no other stars are used, but keep for now if other features might use it.
+// import StarRating from '@/components/StarRating';
 import { useJokes } from '@/contexts/JokeContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardFooter } from '@/components/ui/card'; // CardHeader, CardTitle removed as not used
 import { cn } from '@/lib/utils';
 
 interface JokeListItemProps {
@@ -22,22 +23,11 @@ interface JokeListItemProps {
 }
 
 const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
-  const { rateJoke, toggleUsed } = useJokes();
+  const { toggleUsed } = useJokes();
   const { user: currentUser } = useAuth();
   const [isTogglingUsed, setIsTogglingUsed] = useState(false);
-  const [isRating, setIsRating] = useState(false);
 
   const isOwner = currentUser?.uid === joke.userId;
-
-  const handleRatingChange = async (newRating: number) => {
-    if (!isOwner) {
-        return;
-    }
-    if (joke.funnyRate === newRating) return;
-    setIsRating(true);
-    await rateJoke(joke.id, newRating);
-    setIsRating(false);
-  };
 
   const handleToggleUsed = async () => {
     if (!isOwner) return;
@@ -69,8 +59,7 @@ const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
         {/* Left side: Details */}
         <div className="flex items-center flex-nowrap text-xs text-muted-foreground">
             <div className="flex items-center gap-1 flex-shrink-0"> {/* Date */}
-                {/* Star icon removed from here */}
-                <CalendarDays className="h-4 w-4 mr-1" /> {/* Optional: Replaced Star with CalendarDays for semantic date icon */}
+                <CalendarDays className="h-4 w-4 mr-1" />
                 {format(joke.dateAdded, 'PP')}
             </div>
             {isOwner && currentUser?.email && (
@@ -92,18 +81,9 @@ const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
             )}
         </div>
 
-        {/* Right side: Actions */}
+        {/* Right side: Actions - StarRating for owner's funnyRate is removed */}
         <div className="flex items-center gap-1">
-            <StarRating
-                rating={joke.funnyRate}
-                onRatingChange={isOwner ? handleRatingChange : undefined}
-                readOnly={!isOwner}
-                size={16}
-                disabled={isRating || isTogglingUsed || !isOwner}
-                starClassName={cn(isOwner ? "text-primary" : "text-muted-foreground")}
-            />
-            {isOwner && isRating && <Loader2 className="ml-1 h-3 w-3 animate-spin text-primary" />}
-
+            {/* Placeholder for average rating - currently empty */}
             {isOwner && (
               <TooltipProvider delayDuration={300}>
                 <Tooltip>
@@ -113,7 +93,7 @@ const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
                       size="icon"
                       className="h-7 w-7"
                       onClick={handleToggleUsed}
-                      disabled={isTogglingUsed || isRating || !isOwner}
+                      disabled={isTogglingUsed}
                       aria-label={joke.used ? 'Mark as unused' : 'Mark as used'}
                     >
                       {isTogglingUsed ? (
@@ -138,3 +118,5 @@ const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
 };
 
 export default JokeListItem;
+
+    
