@@ -3,16 +3,13 @@
 
 import type { FC } from 'react';
 import { format } from 'date-fns';
-import { UserCircle, CalendarDays, Star as StarIcon } from 'lucide-react'; // Removed Check, Square, Loader2 if not used elsewhere
-import { useState } from 'react';
+import { CalendarDays, Star as StarIcon } from 'lucide-react'; // Removed UserCircle
 import Link from 'next/link';
 
 import type { Joke } from '@/lib/types';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import StarRating from '@/components/StarRating';
-// Removed toggleUsed from useJokes import
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
@@ -23,16 +20,13 @@ interface JokeListItemProps {
 
 const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
   const { user: currentUser } = useAuth();
-  // Removed isTogglingUsed state
 
   const isOwner = currentUser?.uid === joke.userId;
-
-  // Removed handleToggleUsed function
 
   return (
     <Card className={cn(
         "flex flex-col shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-lg overflow-hidden border-primary/20",
-        joke.used && isOwner ? "bg-muted/30" : "bg-card" // This styling might now be orphaned if 'used' cannot be set easily
+        joke.used && isOwner ? "bg-muted/30" : "bg-card" 
     )}>
       <Link href={`/joke/${joke.id}`}
             className="block flex-grow flex flex-col hover:bg-accent/20 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 rounded-t-lg">
@@ -49,29 +43,12 @@ const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
         </CardContent>
       </Link>
       <CardFooter className="p-4 border-t border-border/50 flex items-center justify-between">
-        {/* Left side: Date & Optional Owner Info */}
+        {/* Left side: Date */}
         <div className="flex items-center flex-nowrap text-xs text-muted-foreground">
             <div className="flex items-center gap-1 flex-shrink-0">
                 <CalendarDays className="h-4 w-4 mr-1" />
                 {format(joke.dateAdded, 'PP')}
             </div>
-            {isOwner && currentUser?.email && (
-                <div className="ml-2 flex-shrink-0">
-                    <TooltipProvider delayDuration={200}>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                        <div className="flex items-center gap-1 cursor-default">
-                            <UserCircle className="h-4 w-4" />
-                            <span>You</span>
-                        </div>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                        <p>Posted by: You ({currentUser.email})</p>
-                        </TooltipContent>
-                    </Tooltip>
-                    </TooltipProvider>
-                </div>
-            )}
         </div>
 
         {/* Right side: Average Rating */}
@@ -97,8 +74,6 @@ const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
             ) : (
                 <span className="text-xs text-muted-foreground italic">No ratings yet</span>
             )}
-
-            {/* Removed "mark as used" toggle button */}
         </div>
       </CardFooter>
     </Card>
@@ -106,3 +81,4 @@ const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
 };
 
 export default JokeListItem;
+
