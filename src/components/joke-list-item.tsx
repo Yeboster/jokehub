@@ -3,7 +3,7 @@
 
 import type { FC } from 'react';
 import { format } from 'date-fns';
-import { Check, Square, Loader2, UserCircle, CalendarDays } from 'lucide-react';
+import { UserCircle, CalendarDays, Star as StarIcon } from 'lucide-react'; // Removed Check, Square, Loader2 if not used elsewhere
 import { useState } from 'react';
 import Link from 'next/link';
 
@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import StarRating from '@/components/StarRating';
-import { useJokes } from '@/contexts/JokeContext';
+// Removed toggleUsed from useJokes import
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
@@ -22,23 +22,17 @@ interface JokeListItemProps {
 }
 
 const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
-  const { toggleUsed } = useJokes();
   const { user: currentUser } = useAuth();
-  const [isTogglingUsed, setIsTogglingUsed] = useState(false);
+  // Removed isTogglingUsed state
 
   const isOwner = currentUser?.uid === joke.userId;
 
-  const handleToggleUsed = async () => {
-    if (!isOwner) return;
-    setIsTogglingUsed(true);
-    await toggleUsed(joke.id, joke.used);
-    setIsTogglingUsed(false);
-  };
+  // Removed handleToggleUsed function
 
   return (
     <Card className={cn(
         "flex flex-col shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-lg overflow-hidden border-primary/20",
-        joke.used && isOwner ? "bg-muted/30" : "bg-card"
+        joke.used && isOwner ? "bg-muted/30" : "bg-card" // This styling might now be orphaned if 'used' cannot be set easily
     )}>
       <Link href={`/joke/${joke.id}`}
             className="block flex-grow flex flex-col hover:bg-accent/20 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 rounded-t-lg">
@@ -80,7 +74,7 @@ const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
             )}
         </div>
 
-        {/* Right side: Average Rating and Owner's Toggle Used */}
+        {/* Right side: Average Rating */}
         <div className="flex items-center gap-2">
             {joke.ratingCount && joke.ratingCount > 0 ? (
                 <TooltipProvider delayDuration={300}>
@@ -104,33 +98,7 @@ const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
                 <span className="text-xs text-muted-foreground italic">No ratings yet</span>
             )}
 
-            {isOwner && (
-              <TooltipProvider delayDuration={300}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={handleToggleUsed}
-                      disabled={isTogglingUsed}
-                      aria-label={joke.used ? 'Mark as unused' : 'Mark as used'}
-                    >
-                      {isTogglingUsed ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : joke.used ? (
-                        <Check className="h-4 w-4 text-green-600" />
-                      ) : (
-                        <Square className="h-4 w-4 text-muted-foreground" />
-                      )}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{joke.used ? 'Mark as unused' : 'Mark as used'}</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
+            {/* Removed "mark as used" toggle button */}
         </div>
       </CardFooter>
     </Card>
