@@ -7,6 +7,8 @@ export interface Joke {
   used: boolean;
   funnyRate: number; // 0 for unrated, 1-5 for rating
   userId: string; // Added to associate joke with a user
+  averageRating?: number;
+  ratingCount?: number;
 }
 
 export interface Category {

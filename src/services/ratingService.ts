@@ -8,8 +8,8 @@ import {
   limit,
   getDocs,
   Timestamp,
-  orderBy, // Added orderBy
-  deleteField, // Added deleteField
+  orderBy,
+  doc,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { UserRating } from '@/lib/types';
@@ -57,6 +57,19 @@ export async function submitUserRating(
     ratingData.createdAt = now;
     await addDoc(ratingsCollectionRef, ratingData);
   }
+
+  // After submitting the rating, update the joke's average rating and count
+  const allRatings = await fetchAllRatingsForJoke(jokeId);
+  const ratingCount = allRatings.length;
+  const averageRating = ratingCount > 0 
+    ? Math.floor(allRatings.reduce((acc, r) => acc + r.ratingValue, 0) / ratingCount) 
+    : 0;
+
+  const jokeDocRef = doc(db, 'jokes', jokeId);
+  await updateDoc(jokeDocRef, {
+    averageRating,
+    ratingCount,
+  });
 }
 
 export async function getUserRatingForJoke(
