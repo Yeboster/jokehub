@@ -55,12 +55,30 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
 
-  const fetchJokes = useCallback(async (filters: FilterParams, isLoadMore: boolean) => {
+  // Effect for loading ALL categories (independent of user for the list itself)
+  useEffect(() => {
+    if (authLoading) {
+      setCategories(null); // Clear categories if auth is (re)loading
+      return;
+    }
+    const unsubscribe = categoryService.subscribeToAllCategoriesFromCollection(
+      (newCategories) => {
+        setCategories(newCategories);
+      },
+      (error) => {
+        console.error('Error in category subscription (JokeContext):', error);
+        toast({ title: 'Error fetching system categories', description: error.message, variant: 'destructive' });
+        setCategories([]); // Set to empty array on error to signify data attempted to load
+      }
+    );
+    return () => unsubscribe();
+  }, [authLoading, toast]);
+
+  const fetchJokesInternal = useCallback(async (filters: FilterParams, isLoadMore: boolean) => {
     if (filters.scope === 'user' && !user) {
       setJokes([]);
       setHasMoreJokes(false);
-      setLoadingInitialJokes(false);
-      setLoadingMoreJokes(false);
+      if (isLoadMore) setLoadingMoreJokes(false); else setLoadingInitialJokes(false);
       return;
     }
 
@@ -69,8 +87,8 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoadingMoreJokes(true);
     } else {
       setLoadingInitialJokes(true);
-      setJokes(null);
-      lastVisibleJokeDocRef.current = null;
+      setJokes(null); // Clear previous jokes for a new filter set
+      lastVisibleJokeDocRef.current = null; // Reset pagination
     }
 
     try {
@@ -93,103 +111,89 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
       lastVisibleJokeDocRef.current = lastVisible;
       setHasMoreJokes(newHasMore);
     } catch (error: any) {
-      console.error('Error fetching jokes:', error);
-      toast({ title: 'Error', description: 'Could not load jokes.', variant: 'destructive' });
-      if (!isLoadMore) setJokes([]);
+      console.error('Error fetching jokes (JokeContext):', error);
+      toast({ title: 'Error', description: error.message || 'Could not load jokes.', variant: 'destructive' });
+      if (!isLoadMore) setJokes([]); // Set to empty on error for initial load
       setHasMoreJokes(false);
     } finally {
       if (isLoadMore) setLoadingMoreJokes(false);
       else setLoadingInitialJokes(false);
     }
-  }, [user, toast, hasMoreJokes, loadingMoreJokes]);
+  }, [user, toast, hasMoreJokes, loadingMoreJokes]); // Dependencies for fetchJokesInternal
 
   const loadJokesWithFilters = useCallback(
     async (filters: FilterParams) => {
-      activeFiltersRef.current = filters;
-      await fetchJokes(filters, false);
+      activeFiltersRef.current = filters; // Update active filters
+      await fetchJokesInternal(filters, false); // Call internal fetch logic
     },
-    [fetchJokes]
+    [fetchJokesInternal] // fetchJokesInternal is memoized
   );
-
+  
   const loadMoreFilteredJokes = useCallback(async () => {
-    // The checks for loadingMoreJokes and hasMoreJokes are inside fetchJokes for the isLoadMore scenario.
-    await fetchJokes(activeFiltersRef.current, true);
-  }, [fetchJokes]);
+    await fetchJokesInternal(activeFiltersRef.current, true);
+  }, [fetchJokesInternal]);
 
+
+  // Effect for loading JOKES based on filters, user, and ensuring categories are loaded first
   useEffect(() => {
-    if (authLoading) {
-      setJokes(null);
-      setCategories(null);
-      setLoadingInitialJokes(true);
+    if (authLoading || categories === null) { // Wait for auth and categories to be loaded (or attempted)
+      setJokes(null); // Clear jokes if dependencies are not ready
+      setLoadingInitialJokes(true); // Indicate loading
       return;
     }
 
-    // Subscribe to all categories from the collection for filtering purposes
-    const unsubscribeCategories = categoryService.subscribeToAllCategoriesFromCollection(
-      (newCategories) => {
-        setCategories(newCategories);
-      },
-      (error) => {
-        toast({ title: 'Error fetching system categories', description: error.message, variant: 'destructive' });
-        setCategories([]); // Or null, depending on how you want to handle errors
-      }
-    );
-    
-    // Joke loading logic remains conditional on user for 'user' scope
-    // And initial load logic based on active filters.
     const currentFilters = activeFiltersRef.current;
-    if (user) {
-        loadJokesWithFilters(currentFilters);
-    } else {
-        // If user logs out or is not logged in, ensure scope is not 'user'
-        if (currentFilters.scope === 'user') {
-            const publicFilters = { ...currentFilters, scope: 'public' as const };
-            // activeFiltersRef.current will be updated by loadJokesWithFilters
-            loadJokesWithFilters(publicFilters);
-        } else {
-            loadJokesWithFilters(currentFilters);
-        }
-    }
+    let filtersToUse = currentFilters;
 
-    return () => unsubscribeCategories();
-  }, [authLoading, user, toast, loadJokesWithFilters]);
+    if (!user && currentFilters.scope === 'user') {
+      // If logged out and scope was 'user', switch to 'public'
+      filtersToUse = { ...currentFilters, scope: 'public' as const };
+      // activeFiltersRef will be updated by loadJokesWithFilters call
+    }
+    
+    loadJokesWithFilters(filtersToUse);
+
+  }, [authLoading, user, categories, loadJokesWithFilters]); // Now also depends on `categories`
 
 
   const handleApiCall = useCallback(
     async <T,>(
       apiCall: () => Promise<T>,
       successMessage: string,
-      shouldReloadJokes = false
+      shouldReloadJokesList = false // Changed from shouldReloadJokes to be more specific
     ): Promise<T | undefined> => {
-      if (!user && !['fetchAllRatingsForJoke', 'getJokeById'].includes(apiCall.name) ) {
+      if (!user && !['fetchAllRatingsForJoke', 'getJokeById'].includes(apiCall.name) ) { // Allow specific calls when logged out
         toast({
           title: 'Authentication Required',
           description: 'Please log in.',
           variant: 'destructive',
         });
-        return;
+        return undefined;
       }
       try {
         const result = await apiCall();
         if (successMessage) {
             toast({ title: 'Success', description: successMessage });
         }
-        if (shouldReloadJokes && user) { 
-          await fetchJokes(activeFiltersRef.current, false);
+        if (shouldReloadJokesList && (user || activeFiltersRef.current.scope === 'public')) { // Reload if user is logged in OR if current scope is public
+          await loadJokesWithFilters(activeFiltersRef.current); // Use the centralized loading function
         }
         return result;
       } catch (error: any) {
-        console.error('API call error:', error);
-        toast({ title: 'Error', description: error.message, variant: 'destructive' });
-        throw error;
+        console.error('API call error (JokeContext):', error);
+        // Avoid duplicate toasts if service layer already toasted
+        if (!(error.message.includes("Category name cannot be empty") || error.message.includes("permission denied"))) {
+             toast({ title: 'Error', description: error.message || 'An unexpected error occurred.', variant: 'destructive' });
+        }
+        throw error; // Re-throw to allow specific handling in components if needed
       }
     },
-    [user, toast, fetchJokes]
+    [user, toast, loadJokesWithFilters] // Added loadJokesWithFilters
   );
 
   const addJoke = useCallback(
     (newJokeData: { text: string; category: string; funnyRate?: number }) => {
-       if (!user) throw new Error("User not authenticated");
+       if (!user) throw new Error("User not authenticated for adding joke.");
        return handleApiCall(() => jokeService.addJoke(newJokeData, user.uid), 'Joke added successfully!', true)!;
     },
     [handleApiCall, user]
@@ -197,7 +201,7 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const importJokes = useCallback(
     (importedJokesData: Omit<Joke, 'id' | 'used' | 'dateAdded' | 'userId'>[]) => {
-      if (!user) throw new Error("User not authenticated");
+      if (!user) throw new Error("User not authenticated for importing jokes.");
       return handleApiCall(
         () => jokeService.importJokes(importedJokesData, user.uid),
         `Processed ${importedJokesData.length} jokes.`,
@@ -209,12 +213,13 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const toggleUsed = useCallback(
     async (id: string, currentUsedStatus: boolean) => { 
-      if (!user) throw new Error("User not authenticated");
+      if (!user) throw new Error("User not authenticated for toggling joke status.");
       await handleApiCall(
         () => jokeService.toggleJokeUsed(id, user.uid), 
         'Joke status updated.',
         false 
       );
+      // Manually update local state for responsiveness if list isn't fully reloaded
       setJokes((prevJokes) =>
         prevJokes
           ? prevJokes.map((j) => (j.id === id ? { ...j, used: !currentUsedStatus } : j))
@@ -224,9 +229,9 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
     [handleApiCall, user]
   );
 
-  const rateJoke = useCallback(
+  const rateJoke = useCallback( // This function seems to update owner's funnyRate, distinct from user ratings
     async (id: string, rating: number) => {
-      if (!user) throw new Error("User not authenticated");
+      if (!user) throw new Error("User not authenticated for rating joke.");
       await handleApiCall(() => jokeService.rateJoke(id, rating, user.uid), 'Joke rated successfully.', false);
       setJokes((prevJokes) =>
         prevJokes
@@ -239,11 +244,11 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateJokeCategory = useCallback(
     (jokeId: string, newCategoryName: string) => {
-      if (!user) throw new Error("User not authenticated");
+      if (!user) throw new Error("User not authenticated for updating joke category.");
       return handleApiCall(
         () => jokeService.updateJokeCategory(jokeId, newCategoryName, user.uid),
         'Joke category updated.',
-        true
+        true // Reload list as category change might affect filtering
       )!;
     },
     [handleApiCall, user]
@@ -251,6 +256,7 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const getJokeById = useCallback(
     async (jokeId: string): Promise<Joke | null> => {
+      // This can be called by anyone
       try {
         const joke = await jokeService.getJokeById(jokeId);
         return joke;
@@ -265,11 +271,11 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
   
   const updateJoke = useCallback(
     (jokeId: string, updatedData: Partial<Omit<Joke, 'id' | 'dateAdded' | 'userId'>>) => {
-      if (!user) throw new Error("User not authenticated");
+      if (!user) throw new Error("User not authenticated for updating joke.");
       return handleApiCall(
         () => jokeService.updateJoke(jokeId, updatedData, user.uid),
         'Joke updated successfully!',
-        true
+        true // Reload list as content/category/status might change
       )!;
     },
     [handleApiCall, user]
@@ -277,10 +283,15 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const submitUserRating = useCallback(
     (jokeId: string, stars: number, comment?: string) => {
-      if (!user) throw new Error("User not authenticated");
+      if (!user) throw new Error("User not authenticated for submitting rating.");
+      // Reloading jokes list after rating is implicitly handled by jokeService.submitUserRating 
+      // which updates the joke's averageRating and ratingCount, triggering list item re-render if visible.
+      // A full list reload might be desired if averageRating is a filter criteria that changes.
+      // For now, not forcing full reload from here to keep it efficient.
       return handleApiCall(
         () => ratingService.submitUserRating(jokeId, stars, user.uid, comment),
-        'Rating submitted successfully.' // Reloading jokes after rating is handled by ratingService updating joke doc
+        'Rating submitted successfully.',
+        true // Force reload to update averageRating display on list items.
       )!;
     },
     [handleApiCall, user]
@@ -300,6 +311,7 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchAllRatingsForJoke = useCallback(
     async (jokeId: string): Promise<UserRating[]> => {
+      // This can be called by anyone to see community ratings
       try {
         return await ratingService.fetchAllRatingsForJoke(jokeId);
       } catch (error: any) {
