@@ -37,6 +37,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# Firebase
+context_backup/
 .genkit/*
 .env*
 firebase-admin-credentials.json
