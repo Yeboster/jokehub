@@ -35,7 +35,7 @@ function JokesPageComponent() {
   const { toast } = useToast();
   const {
     jokes,
-    categories: allCategoriesFromContext, // This is ALL categories from the system
+    categories: allCategoriesFromContext, 
     loadJokesWithFilters,
     loadMoreFilteredJokes,
     hasMoreJokes,
@@ -72,7 +72,7 @@ function JokesPageComponent() {
     const queryUsageStatus = searchParams.get('usageStatus') as FilterParams['usageStatus'] || defaultPageFilters.usageStatus;
 
     let effectiveScope = queryScope;
-    if (queryScope === 'user' && !user) { // If URL says 'user' but not logged in, default to 'public'
+    if (queryScope === 'user' && !user) { 
         effectiveScope = 'public'; 
     }
     
@@ -83,59 +83,50 @@ function JokesPageComponent() {
       usageStatus: ['all', 'used', 'unused'].includes(queryUsageStatus) ? queryUsageStatus : defaultPageFilters.usageStatus,
     };
     
-    // Only update activeFilters and trigger reload if they actually changed from URL
     setActiveFilters(prevFilters => {
       if (JSON.stringify(prevFilters) === JSON.stringify(filtersFromUrl)) {
         return prevFilters;
       }
-      // If filters changed, loadJokesWithFilters will be called by the other useEffect
       return filtersFromUrl; 
     });
 
-    // Sync modal temporary state with URL derived filters
     setTempScope(filtersFromUrl.scope);
     setTempSelectedCategories([...filtersFromUrl.selectedCategories]);
     setTempFilterFunnyRate(filtersFromUrl.filterFunnyRate);
     setTempUsageStatus(filtersFromUrl.usageStatus);
 
-  }, [searchParams, user, authLoading]); // Rerun when URL or auth state changes
+  }, [searchParams, user, authLoading]); 
 
   useEffect(() => {
-    // This effect triggers joke loading when activeFilters changes OR when critical context (user, authLoading) changes
-    // It relies on JokeContext's internal useEffect to handle the actual fetch conditions (e.g., categories loaded)
-    if (authLoading) {
-      return; // Wait for auth to resolve
+    if (authLoading || allCategoriesFromContext === null) {
+      return; 
     }
-    // JokeContext will decide if it's ready to load jokes (e.g., categories loaded)
     loadJokesWithFilters(activeFilters);
 
-  }, [user, authLoading, activeFilters, loadJokesWithFilters]);
+  }, [user, authLoading, activeFilters, loadJokesWithFilters, allCategoriesFromContext]);
 
 
   const modalCategoryNames = useMemo(() => {
     if (!allCategoriesFromContext || allCategoriesFromContext.length === 0) {
-        return []; // Ensure it handles null or empty gracefully
+        return [];
     }
-    // Get unique, trimmed, non-empty names from all categories fetched by the context
     const distinctNames = Array.from(new Set(allCategoriesFromContext.map(cat => cat.name.trim()).filter(name => name !== '')));
-    return distinctNames.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase())); // Case-insensitive sort
+    return distinctNames.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
   }, [allCategoriesFromContext]);
 
 
   const jokesToDisplay = useMemo(() => jokes ?? [], [jokes]);
 
   const handleOpenFilterModal = () => {
-    // Reset temporary modal state to currently active filters when opening
     setTempScope(activeFilters.scope);
     setTempSelectedCategories([...activeFilters.selectedCategories]);
     setTempFilterFunnyRate(activeFilters.filterFunnyRate);
     setTempUsageStatus(activeFilters.usageStatus);
-    setCategorySearch(''); // Clear search
+    setCategorySearch('');
     setIsFilterModalOpen(true);
   };
 
   const handleApplyFilters = () => {
-    // Validate selected categories against the available modalCategoryNames
     const validatedSelectedCategories = tempSelectedCategories.filter(cat => modalCategoryNames.includes(cat));
 
     const newFilters: FilterParams = {
@@ -160,15 +151,13 @@ function JokesPageComponent() {
     }
     
     const queryString = queryParams.toString();
-    // Navigating will trigger the useEffect that parses searchParams and updates activeFilters
     router.push(queryString ? `/jokes?${queryString}` : '/jokes'); 
     setIsFilterModalOpen(false);
   };
 
   const handleClearFilters = () => {
     setCategorySearch('');
-    router.push('/jokes'); // This will reset activeFilters via useEffect
-    // Modal temp states will be reset if modal is reopened or apply is hit after this
+    router.push('/jokes'); 
   };
 
 
@@ -206,7 +195,6 @@ function JokesPageComponent() {
     ? "Manage and filter your personal joke collection."
     : "Browse, filter, and enjoy jokes from the community. Add your own too!";
 
-  // Combined loading state: auth is resolving OR initial jokes are loading (which depends on categories being loaded too)
   const isPageLoading = authLoading || (loadingInitialJokes && jokes === null) || allCategoriesFromContext === null;
 
   if (isPageLoading) {
@@ -230,7 +218,6 @@ function JokesPageComponent() {
       <div className="mb-6 p-4 flex items-center gap-x-4 gap-y-3 border-b pb-6">
         <Dialog open={isFilterModalOpen} onOpenChange={(isOpen) => {
           if (!isOpen) { 
-            // If modal closes without applying, reset temp state to active filters
             setTempScope(activeFilters.scope);
             setTempSelectedCategories([...activeFilters.selectedCategories]);
             setTempFilterFunnyRate(activeFilters.filterFunnyRate);
@@ -264,12 +251,12 @@ function JokesPageComponent() {
                   onValueChange={(value: FilterParams['scope']) => {
                     if (value === 'user' && !user) {
                       toast({ title: 'Login Required', description: 'Log in to see your jokes.', variant: 'destructive'});
-                      setTempScope('public'); // Fallback to public if user tries 'My Jokes' when not logged in
+                      setTempScope('public'); 
                     } else {
                       setTempScope(value);
                     }
                   }}
-                  disabled={authLoading} // Disable only if auth is still loading
+                  disabled={authLoading} 
                 >
                   <SelectTrigger id="filter-scope-select" className="col-span-3 text-sm">
                     <SelectValue placeholder="Select view" />
@@ -296,7 +283,7 @@ function JokesPageComponent() {
                       role="combobox"
                       aria-expanded={isCategoryPopoverOpen}
                       className="w-full justify-between text-left font-normal h-auto min-h-10"
-                       disabled={allCategoriesFromContext === null || modalCategoryNames.length === 0} // Disabled if categories still loading or none exist
+                       disabled={allCategoriesFromContext === null || modalCategoryNames.length === 0}
                     >
                       <div className="flex flex-wrap gap-1">
                         {tempSelectedCategories.length === 0 && <span className="text-muted-foreground">Select categories...</span>}
@@ -325,7 +312,7 @@ function JokesPageComponent() {
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0 max-h-60 overflow-y-auto" align="start">
+                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0 max-h-60 overflow-hidden" align="start">
                     <Command>
                       <CommandInput
                         placeholder="Search categories..."
@@ -333,7 +320,7 @@ function JokesPageComponent() {
                         onValueChange={setCategorySearch}
                         className="h-9"
                       />
-                      <CommandList>
+                      <CommandList className="max-h-[204px]"> {/* Calculated max-height */}
                         <CommandEmpty>{modalCategoryNames.length === 0 ? "No categories available." : "No categories found."}</CommandEmpty>
                         <CommandGroup>
                           {filteredCategoryOptionsForModal.map((categoryName) => (
