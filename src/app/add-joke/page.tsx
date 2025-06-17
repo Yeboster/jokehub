@@ -4,9 +4,10 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
+// useForm, zodResolver, z are not directly used in this simplified loading logic section, but kept for the form
+// import { useForm } from 'react-hook-form';
+// import { zodResolver } from '@hookform/resolvers/zod';
+// import { z } from 'zod';
 import { Loader2, Wand2, PlusCircle, ArrowLeft, ShieldAlert } from 'lucide-react';
 
 import { useAuth } from '@/contexts/AuthContext';
@@ -22,7 +23,7 @@ import { useToast } from '@/hooks/use-toast';
 
 export default function AddJokePage() {
   const { user, loading: authLoading } = useAuth();
-  const { addJoke, loadingInitialJokes: loadingContext } = useJokes();
+  const { addJoke, loadingInitialJokes: loadingContext } = useJokes(); // loadingContext is loadingInitialJokes
   const router = useRouter();
   const { toast } = useToast();
 
@@ -31,19 +32,12 @@ export default function AddJokePage() {
   const [aiGeneratedText, setAiGeneratedText] = useState<string | undefined>();
   const [aiGeneratedCategory, setAiGeneratedCategory] = useState<string | undefined>();
   
-  // General loading state for the page setup (auth check, context loading)
-  const [isPageLoading, setIsPageLoading] = useState(true);
-
-
+  // Effect for redirecting if user is not authenticated after auth check
   useEffect(() => {
-    if (!authLoading) {
-      if (!user) {
-        router.push('/auth?redirect=/add-joke');
-      } else {
-        setIsPageLoading(loadingContext); // Page is ready when auth is checked and context isn't loading
-      }
+    if (!authLoading && !user) {
+      router.push('/auth?redirect=/add-joke');
     }
-  }, [user, authLoading, loadingContext, router]);
+  }, [user, authLoading, router]);
 
   const handleGenerateJoke = async () => {
     if (!user) {
@@ -81,37 +75,32 @@ export default function AddJokePage() {
       toast({ title: 'Login Required', description: 'Please log in to add jokes.', variant: 'destructive' });
       return;
     }
-    // The AddJokeForm component handles its own isSubmitting state.
-    // We don't need a separate one here unless wrapping its submission.
     try {
       await addJoke(data);
       toast({ title: 'Success!', description: 'Your joke has been added.', variant: 'default' });
       router.push('/jokes');
     } catch (error) {
-      // Error toast is likely handled within addJoke or the form itself.
-      // If not, add one here.
       console.error("Error submitting joke from page:", error);
     }
   };
   
   const handleAiJokeUsedInForm = () => {
-    // Optional: Clear AI fields after the form has potentially used them.
-    // setAiGeneratedText(undefined);
-    // setAiGeneratedCategory(undefined);
-    // setAiTopicHint(''); // Or keep for next generation
+    // Optional: Clear AI fields or keep for next generation
   };
 
-  if (isPageLoading || authLoading) {
+  // 1. Check Authentication Loading State
+  if (authLoading) {
     return (
       <div className="container mx-auto p-4 md:p-8 flex flex-col justify-center items-center min-h-[calc(100vh-8rem)]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="mt-2 text-muted-foreground">Loading page...</p>
+        <p className="mt-2 text-muted-foreground">Verifying authentication...</p>
       </div>
     );
   }
-  
+
+  // 2. Auth is resolved. Check if user exists.
+  // The useEffect above handles redirection, this is a fallback UI or for while redirect is processing.
   if (!user) {
-     // This case should ideally be handled by the redirect, but as a fallback:
      return (
         <div className="container mx-auto p-4 md:p-8">
             <Header title="Add New Joke" />
@@ -133,7 +122,17 @@ export default function AddJokePage() {
      );
   }
 
+  // 3. User exists and auth is resolved. Check JokeContext loading state (for categories, etc.)
+  if (loadingContext) {
+    return (
+      <div className="container mx-auto p-4 md:p-8 flex flex-col justify-center items-center min-h-[calc(100vh-8rem)]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="mt-2 text-muted-foreground">Loading page data...</p>
+      </div>
+    );
+  }
 
+  // All clear: Auth resolved, user exists, JokeContext data loaded.
   return (
     <div className="container mx-auto p-4 md:p-8">
       <Header title="Craft a New Joke" />
@@ -163,7 +162,7 @@ export default function AddJokePage() {
               </div>
               <Button
                 onClick={handleGenerateJoke}
-                disabled={isGeneratingJoke || !user}
+                disabled={isGeneratingJoke || !user} // Redundant !user check here as page already confirms user, but harmless
                 className="w-full"
               >
                 {isGeneratingJoke ? (
@@ -180,7 +179,7 @@ export default function AddJokePage() {
               )}
             </CardContent>
           </Card>
-           <Button variant="outline" onClick={() => router.push('/jokes')} className="w-full mt-auto"> {/* mt-auto pushes to bottom if Card is taller */}
+           <Button variant="outline" onClick={() => router.push('/jokes')} className="w-full mt-auto">
             <ArrowLeft className="mr-2 h-4 w-4" /> Back to Jokes List
           </Button>
         </div>

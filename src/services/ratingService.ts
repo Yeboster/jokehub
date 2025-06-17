@@ -18,11 +18,11 @@ const JOKE_RATINGS_COLLECTION = 'jokeRatings';
 
 export async function submitUserRating(
   jokeId: string,
-  ratingValue: number,
+  stars: number,
   userId: string,
   comment?: string
 ) {
-  if (ratingValue < 1 || ratingValue > 5) {
+  if (stars < 1 || stars > 5) {
     throw new Error('Rating must be between 1 and 5 stars.');
   }
   if (comment && comment.length > 1000) {
@@ -44,7 +44,7 @@ export async function submitUserRating(
   const ratingData: any = {
     jokeId,
     userId,
-    ratingValue,
+    stars,
     updatedAt: now,
     comment: (comment && comment.trim() !== '') ? comment.trim() : null,
   };
@@ -62,7 +62,7 @@ export async function submitUserRating(
   const allRatings = await fetchAllRatingsForJoke(jokeId);
   const ratingCount = allRatings.length;
   const averageRating = ratingCount > 0 
-    ? Math.floor(allRatings.reduce((acc, r) => acc + r.ratingValue, 0) / ratingCount) 
+    ? Math.floor(allRatings.reduce((acc, r) => acc + r.stars, 0) / ratingCount) 
     : 0;
 
   const jokeDocRef = doc(db, 'jokes', jokeId);

@@ -28,7 +28,7 @@ interface JokeContextProps {
   updateJoke: (jokeId: string, updatedData: Partial<Omit<Joke, 'id' | 'dateAdded' | 'userId' | 'used'>>) => Promise<void>;
   loadJokesWithFilters: (filters: FilterParams) => Promise<void>;
   loadMoreFilteredJokes: () => Promise<void>;
-  submitUserRating: (jokeId: string, ratingValue: number, comment?: string) => Promise<void>;
+  submitUserRating: (jokeId: string, stars: number, comment?: string) => Promise<void>;
   getUserRatingForJoke: (jokeId: string) => Promise<UserRating | null>;
   fetchAllRatingsForJoke: (jokeId: string) => Promise<UserRating[]>;
 }
@@ -274,10 +274,10 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 
   const submitUserRating = useCallback(
-    (jokeId: string, ratingValue: number, comment?: string) => {
+    (jokeId: string, stars: number, comment?: string) => {
       if (!user) throw new Error("User not authenticated");
       return handleApiCall(
-        () => ratingService.submitUserRating(jokeId, ratingValue, user.uid, comment),
+        () => ratingService.submitUserRating(jokeId, stars, user.uid, comment),
         'Rating submitted successfully.'
       )!;
     },

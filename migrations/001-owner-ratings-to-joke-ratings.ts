@@ -20,7 +20,7 @@ export default async function migrateOwnerRatings(db: Firestore) {
         const newRating = {
           jokeId: jokeDoc.id,
           userId: joke.userId,
-          ratingValue: joke.funnyRate,
+          stars: joke.funnyRate,
           comment: null,
           createdAt: Timestamp.now(),
           updatedAt: Timestamp.now(),
@@ -33,10 +33,10 @@ export default async function migrateOwnerRatings(db: Firestore) {
       const allRatingsSnapshot = await allRatingsQuery.get();
       let totalRating = 0;
       allRatingsSnapshot.docs.forEach(ratingDoc => {
-        totalRating += ratingDoc.data().rating;
+        totalRating += ratingDoc.data().stars;
       });
       await jokeDoc.ref.update({
-        averageRating: totalRating / allRatingsSnapshot.docs.length,
+        averageRating: Math.floor(totalRating / allRatingsSnapshot.docs.length),
         ratingCount: allRatingsSnapshot.docs.length,
       });
     }

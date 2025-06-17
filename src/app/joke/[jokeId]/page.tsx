@@ -75,7 +75,7 @@ export default function JokeShowPage() {
             const userRating = allRatings.find(rating => rating.userId === user.uid);
             if (userRating) {
               setCurrentUserRating(userRating);
-              setRatingInputValue(userRating.ratingValue);
+              setRatingInputValue(userRating.stars);
               setCommentInputValue(userRating.comment || '');
             } else {
               setCurrentUserRating(null);
@@ -140,7 +140,7 @@ export default function JokeShowPage() {
       const updatedUserRating = allRatings.find(rating => rating.userId === user.uid);
       if (updatedUserRating) {
         setCurrentUserRating(updatedUserRating);
-        setRatingInputValue(updatedUserRating.ratingValue);
+        setRatingInputValue(updatedUserRating.stars);
         setCommentInputValue(updatedUserRating.comment || '');
       }
       setIsLoadingCurrentUserRating(false);
@@ -160,7 +160,7 @@ export default function JokeShowPage() {
 
   const averageRating = useMemo(() => {
     if (!allUserRatings || allUserRatings.length === 0) return { average: 0, count: 0 };
-    const sum = allUserRatings.reduce((acc, rating) => acc + rating.ratingValue, 0);
+    const sum = allUserRatings.reduce((acc, rating) => acc + rating.stars, 0);
     return {
       average: parseFloat((sum / allUserRatings.length).toFixed(1)),
       count: allUserRatings.length,
@@ -335,7 +335,7 @@ export default function JokeShowPage() {
                           {otherUserRatingsToDisplay.map((rating, index) => (
                               <div key={rating.id}>
                                   <div className="flex items-center gap-2 mb-1">
-                                    <StarRating rating={rating.ratingValue} readOnly size={20} starClassName="text-primary" />
+                                    <StarRating rating={rating.stars} readOnly size={20} starClassName="text-primary" />
                                     <span className="text-sm font-medium text-foreground">
                                       User {/* Replace with user identifier if available, e.g., rating.userDisplayName || 'A User' */}
                                     </span>

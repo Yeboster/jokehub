@@ -22,7 +22,7 @@ export interface UserRating {
   id: string; // Firestore document ID
   jokeId: string; // ID of the joke being rated
   userId: string; // ID of the user who made the rating
-  ratingValue: number; // Numerical rating, e.g., 1-5
+  stars: number; // Numerical rating, e.g., 1-5
   comment?: string; // Optional text comment
   createdAt: Date; // Timestamp of when the rating was first created
   updatedAt: Date; // Timestamp of when the rating was last updated
