@@ -3,7 +3,7 @@
 
 import type { FC } from 'react';
 import { format } from 'date-fns';
-import { Check, Square, Loader2, UserCircle, Star as LucideStarIcon } from 'lucide-react'; // Pencil removed
+import { Check, Square, Loader2, UserCircle, CalendarDays } from 'lucide-react'; // Pencil removed, CalendarDays re-added for consistency if needed elsewhere, LucideStarIcon removed
 import { useState } from 'react';
 import Link from 'next/link';
 
@@ -69,7 +69,8 @@ const JokeListItem: FC<JokeListItemProps> = ({ joke }) => {
         {/* Left side: Details */}
         <div className="flex items-center flex-nowrap text-xs text-muted-foreground">
             <div className="flex items-center gap-1 flex-shrink-0"> {/* Date */}
-                <LucideStarIcon className="h-4 w-4" /> {/* Changed from CalendarDays */}
+                {/* Star icon removed from here */}
+                <CalendarDays className="h-4 w-4 mr-1" /> {/* Optional: Replaced Star with CalendarDays for semantic date icon */}
                 {format(joke.dateAdded, 'PP')}
             </div>
             {isOwner && currentUser?.email && (
