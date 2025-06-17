@@ -21,16 +21,16 @@ interface JokeContextProps {
   loadingMoreJokes: boolean;
   addJoke: (newJokeData: { text: string; category: string; funnyRate?: number }) => Promise<void>;
   importJokes: (importedJokesData: Omit<Joke, 'id' | 'used' | 'dateAdded' | 'userId'>[]) => Promise<void>;
-  toggleUsed: (id: string, currentUsedStatus: boolean) => Promise<void>; // Updated to accept currentUsedStatus
+  toggleUsed: (id: string, currentUsedStatus: boolean) => Promise<void>;
   rateJoke: (id: string, rating: number) => Promise<void>;
   updateJokeCategory: (jokeId: string, newCategoryName: string) => Promise<void>;
   getJokeById: (jokeId: string) => Promise<Joke | null>;
-  updateJoke: (jokeId: string, updatedData: Partial<Omit<Joke, 'id' | 'dateAdded' | 'userId'>>) => Promise<void>;
+  updateJoke: (jokeId: string, updatedData: Partial<Omit<Joke, 'id' | 'dateAdded' | 'userId' | 'used'>>) => Promise<void>;
   loadJokesWithFilters: (filters: FilterParams) => Promise<void>;
   loadMoreFilteredJokes: () => Promise<void>;
   submitUserRating: (jokeId: string, ratingValue: number, comment?: string) => Promise<void>;
   getUserRatingForJoke: (jokeId: string) => Promise<UserRating | null>;
-  fetchAllRatingsForJoke: (jokeId: string) => Promise<UserRating[]>; // New function
+  fetchAllRatingsForJoke: (jokeId: string) => Promise<UserRating[]>;
 }
 
 const JokeContext = createContext<JokeContextProps | undefined>(undefined);
@@ -125,7 +125,7 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!user) {
         loadJokesWithFilters({ ...defaultFilters, scope: 'public' });
         categoryService.subscribeToCategories(
-          "public", // A placeholder or handle public categories differently if needed
+          "public", 
           (newCategories) => setCategories(newCategories),
           (error) => {
             toast({ title: 'Error fetching public categories', description: error.message, variant: 'destructive' });
@@ -158,7 +158,7 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
       successMessage: string,
       shouldReloadJokes = false
     ): Promise<T | undefined> => {
-      if (!user && !['fetchAllRatingsForJoke', 'getJokeById'].includes(apiCall.name) ) { // Allow some calls even if not logged in
+      if (!user && !['fetchAllRatingsForJoke', 'getJokeById'].includes(apiCall.name) ) {
         toast({
           title: 'Authentication Required',
           description: 'Please log in.',
@@ -171,7 +171,7 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (successMessage) {
             toast({ title: 'Success', description: successMessage });
         }
-        if (shouldReloadJokes && user) { // Only reload if user is logged in and action likely affects their jokes
+        if (shouldReloadJokes && user) { 
           await fetchJokes(activeFiltersRef.current, false);
         }
         return result;
@@ -205,14 +205,13 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 
   const toggleUsed = useCallback(
-    async (id: string, currentUsedStatus: boolean) => { // Accept currentUsedStatus
+    async (id: string, currentUsedStatus: boolean) => { 
       if (!user) throw new Error("User not authenticated");
       await handleApiCall(
-        () => jokeService.toggleJokeUsed(id, user.uid), // Service might not need currentUsedStatus
+        () => jokeService.toggleJokeUsed(id, user.uid), 
         'Joke status updated.',
-        false // Do not reload all jokes, update locally
+        false 
       );
-      // Local update of the specific joke's 'used' status
       setJokes((prevJokes) =>
         prevJokes
           ? prevJokes.map((j) => (j.id === id ? { ...j, used: !currentUsedStatus } : j))
@@ -248,12 +247,22 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 
   const getJokeById = useCallback(
-    (jokeId: string) => handleApiCall(() => jokeService.getJokeById(jokeId), '')!, // No success message for get
-    [handleApiCall]
+    async (jokeId: string): Promise<Joke | null> => {
+      try {
+        const joke = await jokeService.getJokeById(jokeId);
+        // No success toast for simple gets, as it's a read operation.
+        return joke;
+      } catch (error: any) {
+        console.error('Error in getJokeById (JokeContext):', error);
+        toast({ title: 'Error Fetching Joke', description: error.message || 'Could not fetch joke details.', variant: 'destructive' });
+        return null;
+      }
+    },
+    [toast] // Depends on toast
   );
-
+  
   const updateJoke = useCallback(
-    (jokeId: string, updatedData: Partial<Omit<Joke, 'id' | 'dateAdded' | 'userId'>>) => {
+    (jokeId: string, updatedData: Partial<Omit<Joke, 'id' | 'dateAdded' | 'userId' | 'used'>>) => {
       if (!user) throw new Error("User not authenticated");
       return handleApiCall(
         () => jokeService.updateJoke(jokeId, updatedData, user.uid),
@@ -270,7 +279,6 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return handleApiCall(
         () => ratingService.submitUserRating(jokeId, ratingValue, user.uid, comment),
         'Rating submitted successfully.'
-        // No full joke reload needed here, but might want to refetch ratings for the joke page
       )!;
     },
     [handleApiCall, user]
@@ -278,12 +286,11 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const getUserRatingForJoke = useCallback(
     (jokeId: string) => {
-      if (!user) return Promise.resolve(null); // Return null if user not logged in
-      // No need for generic handleApiCall here as it has specific return type and no standard success toast
+      if (!user) return Promise.resolve(null); 
       return ratingService.getUserRatingForJoke(jokeId, user.uid).catch(error => {
         console.error("Error fetching user rating in context:", error);
         toast({title: "Error", description: "Could not fetch your rating.", variant: "destructive"});
-        return null; // Return null on error
+        return null; 
       });
     },
     [user, toast]
@@ -296,7 +303,7 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch (error: any) {
         console.error('Error fetching all ratings in context:', error);
         toast({ title: 'Error', description: 'Could not load community ratings.', variant: 'destructive' });
-        return []; // Return empty array on error
+        return []; 
       }
     },
     [toast]
@@ -319,7 +326,7 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loadMoreFilteredJokes,
     submitUserRating,
     getUserRatingForJoke,
-    fetchAllRatingsForJoke, // Add new function to context value
+    fetchAllRatingsForJoke,
   };
 
   return <JokeContext.Provider value={value}>{children}</JokeContext.Provider>;
@@ -332,6 +339,3 @@ export const useJokes = (): JokeContextProps => {
   }
   return context;
 };
-
-
-    
