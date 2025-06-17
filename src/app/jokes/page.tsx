@@ -13,7 +13,7 @@ import { Loader2, ChevronDown, RotateCcw, Filter as FilterIcon, Check, ChevronsU
 import { Label } from '@/components/ui/label';
 // Input, Select components from ui are used in the modal
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'; // Added RadioGroup
 import { Dialog, DialogTrigger, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -26,7 +26,7 @@ const defaultPageFilters: FilterParams = {
   scope: 'public',
   selectedCategories: [],
   filterFunnyRate: -1,
-  showOnlyUsed: false,
+  usageStatus: 'all', // Changed from showOnlyUsed
 };
 
 export default function JokesPage() {
@@ -51,7 +51,7 @@ export default function JokesPage() {
   const [tempScope, setTempScope] = useState<FilterParams['scope']>(defaultPageFilters.scope);
   const [tempSelectedCategories, setTempSelectedCategories] = useState<string[]>(defaultPageFilters.selectedCategories);
   const [tempFilterFunnyRate, setTempFilterFunnyRate] = useState<number>(defaultPageFilters.filterFunnyRate);
-  const [tempShowOnlyUsed, setTempShowOnlyUsed] = useState<boolean>(defaultPageFilters.showOnlyUsed);
+  const [tempUsageStatus, setTempUsageStatus] = useState<FilterParams['usageStatus']>(defaultPageFilters.usageStatus); // Changed from tempShowOnlyUsed
   const [categorySearch, setCategorySearch] = useState('');
 
   // Effect for initial load and auth/filter changes
@@ -62,18 +62,10 @@ export default function JokesPage() {
 
     let filtersToApply = { ...activeFilters };
 
-    // Scenario: User was viewing 'My Jokes' (activeFilters.scope === 'user') and then logs out (!user).
-    // In this case, we must switch to 'public' scope.
     if (activeFilters.scope === 'user' && !user) {
       filtersToApply = { ...defaultPageFilters, scope: 'public' };
-      // Update activeFilters state. This will cause this useEffect to run again.
-      // In the next run, this condition will be false, and the 'else' block will execute loadJokesWithFilters.
       setActiveFilters(filtersToApply);
     } else {
-      // Load jokes with the current (or just corrected) filters.
-      // This path is taken on initial load (if auth is settled),
-      // or when activeFilters change due to user interaction (apply/clear),
-      // or after the scope correction above.
       loadJokesWithFilters(filtersToApply);
     }
   }, [user, authLoading, activeFilters, loadJokesWithFilters]);
@@ -94,7 +86,7 @@ export default function JokesPage() {
     setTempScope(activeFilters.scope);
     setTempSelectedCategories([...activeFilters.selectedCategories]);
     setTempFilterFunnyRate(activeFilters.filterFunnyRate);
-    setTempShowOnlyUsed(activeFilters.showOnlyUsed);
+    setTempUsageStatus(activeFilters.usageStatus); // Changed from tempShowOnlyUsed
     setCategorySearch('');
     setIsFilterModalOpen(true);
   };
@@ -107,27 +99,25 @@ export default function JokesPage() {
       scope: tempScope,
       selectedCategories: validatedSelectedCategories,
       filterFunnyRate: tempFilterFunnyRate,
-      showOnlyUsed: tempShowOnlyUsed,
+      usageStatus: tempUsageStatus, // Changed from showOnlyUsed
     };
     setActiveFilters(newFilters); // This will trigger the useEffect to load jokes
     setIsFilterModalOpen(false);
   };
 
   const handleClearFilters = () => {
-    // Explicitly define the state to reset to, ensuring scope is 'public'
     const clearedFilters: FilterParams = {
       scope: 'public',
       selectedCategories: [],
       filterFunnyRate: -1,
-      showOnlyUsed: false,
+      usageStatus: 'all', // Changed from showOnlyUsed
     };
-    setActiveFilters(clearedFilters); // This will trigger the useEffect to load jokes
+    setActiveFilters(clearedFilters); 
 
-    // Reset temp states for modal consistency if it were reopened
     setTempScope(clearedFilters.scope);
     setTempSelectedCategories(clearedFilters.selectedCategories);
     setTempFilterFunnyRate(clearedFilters.filterFunnyRate);
-    setTempShowOnlyUsed(clearedFilters.showOnlyUsed);
+    setTempUsageStatus(clearedFilters.usageStatus); // Changed
     setCategorySearch('');
   };
 
@@ -154,7 +144,11 @@ export default function JokesPage() {
     );
   }, [modalCategoryNames, categorySearch]);
 
-  const hasActiveAppliedFilters = activeFilters.selectedCategories.length > 0 || activeFilters.filterFunnyRate !== -1 || activeFilters.showOnlyUsed || (user && activeFilters.scope === 'user');
+  const hasActiveAppliedFilters = 
+    activeFilters.selectedCategories.length > 0 || 
+    activeFilters.filterFunnyRate !== -1 || 
+    activeFilters.usageStatus !== 'all' || // Changed from showOnlyUsed
+    (user && activeFilters.scope === 'user');
 
   const pageTitle = activeFilters.scope === 'user' && user ? "My Joke Collection" : "All Jokes Feed";
   const pageDescription = activeFilters.scope === 'user' && user
@@ -185,7 +179,7 @@ export default function JokesPage() {
             setTempScope(activeFilters.scope);
             setTempSelectedCategories([...activeFilters.selectedCategories]);
             setTempFilterFunnyRate(activeFilters.filterFunnyRate);
-            setTempShowOnlyUsed(activeFilters.showOnlyUsed);
+            setTempUsageStatus(activeFilters.usageStatus); // Changed
             setCategorySearch('');
           }
           setIsFilterModalOpen(isOpen);
@@ -332,17 +326,26 @@ export default function JokesPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="modal-show-only-used" className="text-right">Usage Status</Label>
-                <div className="col-span-3 flex items-center space-x-2">
-                  <Switch
-                    id="modal-show-only-used"
-                    checked={tempShowOnlyUsed}
-                    onCheckedChange={setTempShowOnlyUsed}
-                    aria-label="Show only used jokes"
-                  />
-                  <Label htmlFor="modal-show-only-used" className="font-normal">Show Used Only</Label>
-                </div>
+              <div className="grid grid-cols-4 items-start gap-4">
+                <Label className="text-right pt-2">Usage Status</Label>
+                <RadioGroup
+                  value={tempUsageStatus}
+                  onValueChange={(value: FilterParams['usageStatus']) => setTempUsageStatus(value)}
+                  className="col-span-3 space-y-2"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="all" id="usage-all" />
+                    <Label htmlFor="usage-all" className="font-normal">Show All</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="used" id="usage-used" />
+                    <Label htmlFor="usage-used" className="font-normal">Only Used</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="unused" id="usage-unused" />
+                    <Label htmlFor="usage-unused" className="font-normal">Only Unused</Label>
+                  </div>
+                </RadioGroup>
               </div>
             </div>
             </ScrollArea>
@@ -363,8 +366,11 @@ export default function JokesPage() {
           {activeFilters.filterFunnyRate !== -1 && (
             <Badge variant="secondary" className="py-1 px-2">Rating: {getFunnyRateLabel(activeFilters.filterFunnyRate)}</Badge>
           )}
-          {activeFilters.showOnlyUsed && (
-            <Badge variant="secondary" className="py-1 px-2">Status: Used Only</Badge>
+          {activeFilters.usageStatus === 'used' && (
+            <Badge variant="secondary" className="py-1 px-2">Status: Used</Badge>
+          )}
+          {activeFilters.usageStatus === 'unused' && (
+            <Badge variant="secondary" className="py-1 px-2">Status: Unused</Badge>
           )}
         </div>
 
@@ -417,3 +423,4 @@ export default function JokesPage() {
     </div>
   );
 }
+

@@ -25,7 +25,7 @@ interface JokeContextProps {
   rateJoke: (id: string, rating: number) => Promise<void>;
   updateJokeCategory: (jokeId: string, newCategoryName: string) => Promise<void>;
   getJokeById: (jokeId: string) => Promise<Joke | null>;
-  updateJoke: (jokeId: string, updatedData: Partial<Omit<Joke, 'id' | 'dateAdded' | 'userId' | 'used'>>) => Promise<void>;
+  updateJoke: (jokeId: string, updatedData: Partial<Omit<Joke, 'id' | 'dateAdded' | 'userId'>>) => Promise<void>; // 'used' can be updated via updateJoke
   loadJokesWithFilters: (filters: FilterParams) => Promise<void>;
   loadMoreFilteredJokes: () => Promise<void>;
   submitUserRating: (jokeId: string, stars: number, comment?: string) => Promise<void>;
@@ -38,7 +38,7 @@ const JokeContext = createContext<JokeContextProps | undefined>(undefined);
 const defaultFilters: FilterParams = {
   selectedCategories: [],
   filterFunnyRate: -1,
-  showOnlyUsed: false,
+  usageStatus: 'all', // Updated from showOnlyUsed
   scope: 'public',
 };
 
@@ -262,7 +262,7 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
   
   const updateJoke = useCallback(
-    (jokeId: string, updatedData: Partial<Omit<Joke, 'id' | 'dateAdded' | 'userId' | 'used'>>) => {
+    (jokeId: string, updatedData: Partial<Omit<Joke, 'id' | 'dateAdded' | 'userId'>>) => {
       if (!user) throw new Error("User not authenticated");
       return handleApiCall(
         () => jokeService.updateJoke(jokeId, updatedData, user.uid),
@@ -339,3 +339,4 @@ export const useJokes = (): JokeContextProps => {
   }
   return context;
 };
+
