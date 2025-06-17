@@ -39,4 +39,5 @@ next-env.d.ts
 
 .genkit/*
 .env*
+firebase-admin-credentials.json
 !.env.production.local
