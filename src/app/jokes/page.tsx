@@ -17,7 +17,7 @@ import { Dialog, DialogTrigger, DialogContent, DialogDescription, DialogFooter, 
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { ScrollArea } from '@/components/ui/scroll-area';
+// ScrollArea is removed as it's no longer used for the main dialog content
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
@@ -35,7 +35,7 @@ function JokesPageComponent() {
   const { toast } = useToast();
   const {
     jokes,
-    categories: allCategoriesFromContext, 
+    categories: allCategoriesFromContext,
     loadJokesWithFilters,
     loadMoreFilteredJokes,
     hasMoreJokes,
@@ -59,7 +59,7 @@ function JokesPageComponent() {
     const queryScope = searchParams.get('scope') as FilterParams['scope'] || defaultPageFilters.scope;
     const queryCategoriesRaw = searchParams.get('categories');
     const queryCategories = queryCategoriesRaw ? queryCategoriesRaw.split(',').filter(c => c.trim() !== '') : defaultPageFilters.selectedCategories;
-    
+
     const queryFunnyRateRaw = searchParams.get('funnyRate');
     let parsedFunnyRate = defaultPageFilters.filterFunnyRate;
     if (queryFunnyRateRaw !== null) {
@@ -72,22 +72,22 @@ function JokesPageComponent() {
     const queryUsageStatus = searchParams.get('usageStatus') as FilterParams['usageStatus'] || defaultPageFilters.usageStatus;
 
     let effectiveScope = queryScope;
-    if (queryScope === 'user' && !user) { 
-        effectiveScope = 'public'; 
+    if (queryScope === 'user' && !user) {
+        effectiveScope = 'public';
     }
-    
+
     const filtersFromUrl: FilterParams = {
       scope: effectiveScope,
       selectedCategories: queryCategories,
       filterFunnyRate: parsedFunnyRate,
       usageStatus: ['all', 'used', 'unused'].includes(queryUsageStatus) ? queryUsageStatus : defaultPageFilters.usageStatus,
     };
-    
+
     setActiveFilters(prevFilters => {
       if (JSON.stringify(prevFilters) === JSON.stringify(filtersFromUrl)) {
         return prevFilters;
       }
-      return filtersFromUrl; 
+      return filtersFromUrl;
     });
 
     setTempScope(filtersFromUrl.scope);
@@ -95,11 +95,13 @@ function JokesPageComponent() {
     setTempFilterFunnyRate(filtersFromUrl.filterFunnyRate);
     setTempUsageStatus(filtersFromUrl.usageStatus);
 
-  }, [searchParams, user, authLoading]); 
+  }, [searchParams, user, authLoading]);
 
   useEffect(() => {
+    // This effect depends on allCategoriesFromContext being loaded.
+    // Jokes should only load once categories are available (or attempted to load and are empty).
     if (authLoading || allCategoriesFromContext === null) {
-      return; 
+      return;
     }
     loadJokesWithFilters(activeFilters);
 
@@ -110,8 +112,15 @@ function JokesPageComponent() {
     if (!allCategoriesFromContext || allCategoriesFromContext.length === 0) {
         return [];
     }
-    const distinctNames = Array.from(new Set(allCategoriesFromContext.map(cat => cat.name.trim()).filter(name => name !== '')));
-    return distinctNames.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+    // Ensure unique category names, case-insensitive for uniqueness check but preserve original casing for display
+    const nameMap = new Map<string, string>();
+    allCategoriesFromContext.forEach(cat => {
+      const trimmedName = cat.name.trim();
+      if (trimmedName && !nameMap.has(trimmedName.toLowerCase())) {
+        nameMap.set(trimmedName.toLowerCase(), trimmedName);
+      }
+    });
+    return Array.from(nameMap.values()).sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
   }, [allCategoriesFromContext]);
 
 
@@ -149,15 +158,15 @@ function JokesPageComponent() {
     if (newFilters.usageStatus !== defaultPageFilters.usageStatus) {
       queryParams.set('usageStatus', newFilters.usageStatus);
     }
-    
+
     const queryString = queryParams.toString();
-    router.push(queryString ? `/jokes?${queryString}` : '/jokes'); 
+    router.push(queryString ? `/jokes?${queryString}` : '/jokes');
     setIsFilterModalOpen(false);
   };
 
   const handleClearFilters = () => {
     setCategorySearch('');
-    router.push('/jokes'); 
+    router.push('/jokes');
   };
 
 
@@ -183,10 +192,10 @@ function JokesPageComponent() {
     );
   }, [modalCategoryNames, categorySearch]);
 
-  const hasActiveAppliedFilters = useMemo(() => 
+  const hasActiveAppliedFilters = useMemo(() =>
     activeFilters.scope !== defaultPageFilters.scope ||
-    activeFilters.selectedCategories.length > 0 || 
-    activeFilters.filterFunnyRate !== defaultPageFilters.filterFunnyRate || 
+    activeFilters.selectedCategories.length > 0 ||
+    activeFilters.filterFunnyRate !== defaultPageFilters.filterFunnyRate ||
     activeFilters.usageStatus !== defaultPageFilters.usageStatus,
   [activeFilters]);
 
@@ -217,7 +226,7 @@ function JokesPageComponent() {
 
       <div className="mb-6 p-4 flex items-center gap-x-4 gap-y-3 border-b pb-6">
         <Dialog open={isFilterModalOpen} onOpenChange={(isOpen) => {
-          if (!isOpen) { 
+          if (!isOpen) {
             setTempScope(activeFilters.scope);
             setTempSelectedCategories([...activeFilters.selectedCategories]);
             setTempFilterFunnyRate(activeFilters.filterFunnyRate);
@@ -240,8 +249,8 @@ function JokesPageComponent() {
                 Select preferences to filter the joke feed.
               </DialogDescription>
             </DialogHeader>
-            <ScrollArea className="max-h-[calc(80vh-200px)] md:max-h-[calc(70vh-150px)]">
-            <div className="grid gap-6 py-4 pr-3">
+            {/* Removed ScrollArea from here */}
+            <div className="grid gap-6 py-4 pr-3"> {/* Direct child for filter items */}
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="filter-scope-select" className="text-right">
                   Show Jokes
@@ -251,12 +260,12 @@ function JokesPageComponent() {
                   onValueChange={(value: FilterParams['scope']) => {
                     if (value === 'user' && !user) {
                       toast({ title: 'Login Required', description: 'Log in to see your jokes.', variant: 'destructive'});
-                      setTempScope('public'); 
+                      setTempScope('public');
                     } else {
                       setTempScope(value);
                     }
                   }}
-                  disabled={authLoading} 
+                  disabled={authLoading}
                 >
                   <SelectTrigger id="filter-scope-select" className="col-span-3 text-sm">
                     <SelectValue placeholder="Select view" />
@@ -320,14 +329,14 @@ function JokesPageComponent() {
                         onValueChange={setCategorySearch}
                         className="h-9"
                       />
-                      <CommandList className="max-h-[204px]"> {/* Calculated max-height */}
+                      <CommandList className="max-h-[204px]"> {/* This ensures internal scroll for categories */}
                         <CommandEmpty>{modalCategoryNames.length === 0 ? "No categories available." : "No categories found."}</CommandEmpty>
                         <CommandGroup>
                           {filteredCategoryOptionsForModal.map((categoryName) => (
                             <CommandItem
                               key={categoryName}
-                              value={categoryName} 
-                              onSelect={() => { 
+                              value={categoryName}
+                              onSelect={() => {
                                 toggleCategorySelectionInModal(categoryName);
                               }}
                             >
@@ -388,7 +397,7 @@ function JokesPageComponent() {
                 </RadioGroup>
               </div>
             </div>
-            </ScrollArea>
+            {/* End of filter items div */}
             <DialogFooter className="pt-4 border-t">
               <Button variant="outline" onClick={() => setIsFilterModalOpen(false)}>Cancel</Button>
               <Button onClick={handleApplyFilters}>Apply Filters</Button>
@@ -476,3 +485,4 @@ export default function JokesPage() {
     </Suspense>
   );
 }
+
