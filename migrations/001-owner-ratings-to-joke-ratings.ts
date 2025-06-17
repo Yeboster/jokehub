@@ -20,8 +20,10 @@ export default async function migrateOwnerRatings(db: Firestore) {
         const newRating = {
           jokeId: jokeDoc.id,
           userId: joke.userId,
-          rating: joke.funnyRate,
-          timestamp: Timestamp.now(),
+          ratingValue: joke.funnyRate,
+          comment: null,
+          createdAt: Timestamp.now(),
+          updatedAt: Timestamp.now(),
         };
         await jokeRatingsCollectionRef.add(newRating);
       }
