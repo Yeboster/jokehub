@@ -39,16 +39,9 @@ service cloud.firestore {
           (request.resource.data.ratingCount == resource.data.ratingCount || request.resource.data.ratingCount is number)
         ) ||
         // Condition 2: Any authenticated user is updating *only* averageRating and/or ratingCount.
-        (
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['averageRating', 'ratingCount']) &&
-          // Core joke fields must remain unchanged by non-owners
-          request.resource.data.userId == resource.data.userId &&
-          request.resource.data.dateAdded == resource.data.dateAdded &&
-          request.resource.data.text == resource.data.text &&
-          request.resource.data.category == resource.data.category &&
-          request.resource.data.funnyRate == resource.data.funnyRate &&
-          request.resource.data.used == resource.data.used &&
-          // Validate types for averageRating and ratingCount
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['averageRating', 'ratingCount'])
+        // Also ensure that the updated fields are of the correct type
+        && (
           (request.resource.data.averageRating is number) &&
           (request.resource.data.ratingCount is number)
         )
