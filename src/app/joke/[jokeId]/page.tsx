@@ -21,11 +21,12 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
 
 export default function JokeShowPage() {
   const params = useParams();
   const router = useRouter();
-  const { getJokeById, loadingInitialJokes: loadingContext, submitUserRating, getUserRatingForJoke, fetchAllRatingsForJoke } = useJokes();
+  const { getJokeById, loadingInitialJokes: loadingContext, submitUserRating, getUserRatingForJoke, fetchAllRatingsForJoke, toggleUsed } = useJokes();
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
 
@@ -45,6 +46,20 @@ export default function JokeShowPage() {
   const [isLoadingAllRatings, setIsLoadingAllRatings] = useState<boolean>(true);
 
   const jokeId = Array.isArray(params.jokeId) ? params.jokeId[0] : params.jokeId;
+  const isOwner = user && joke && joke.userId === user.uid;
+
+  const handleToggleUsed = async () => {
+    if (!joke || !isOwner) return;
+    try {
+      // The context function handles the API call and shows a toast on success/error.
+      await toggleUsed(joke.id, joke.used);
+      // Update local state for immediate UI feedback.
+      setJoke((prevJoke) => (prevJoke ? { ...prevJoke, used: !prevJoke.used } : null));
+    } catch (error) {
+      // Context will show an error toast, but we can log here if needed.
+      console.error("Failed to toggle 'used' status from page:", error);
+    }
+  };
 
   useEffect(() => {
     async function fetchJokeAndAllRatings() {
@@ -218,8 +233,6 @@ export default function JokeShowPage() {
     );
   }
 
-  const isOwner = user && joke.userId === user.uid;
-
   return (
     <div className="container mx-auto p-4 md:p-8 max-w-3xl">
       <div className="mb-6">
@@ -239,13 +252,25 @@ export default function JokeShowPage() {
             <span className="flex items-center"><CalendarDays className="mr-1.5 h-4 w-4 text-primary" /> {format(joke.dateAdded, 'MMM d, yyyy')}</span>
             <span className="flex items-center">
               <UserCircle className="mr-1.5 h-4 w-4 text-primary" /> Joke by: {isOwner ? 'You' : 'A user'} 
-              {/* For future: `joke.authorEmail || joke.userId` if available */}
             </span>
-             {isOwner && (
+            {isOwner && (
+              <div className="flex items-center gap-4 border-l border-border/50 pl-4 ml-2">
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="used-status-toggle"
+                    checked={!!joke.used}
+                    onCheckedChange={handleToggleUsed}
+                    aria-label={`Mark joke as ${joke.used ? 'unused' : 'used'}`}
+                  />
+                  <Label htmlFor="used-status-toggle" className="text-xs font-normal text-muted-foreground cursor-pointer select-none">
+                    {joke.used ? "Used" : "Unused"}
+                  </Label>
+                </div>
                 <Button variant="ghost" size="sm" onClick={() => router.push(`/edit-joke/${joke.id}`)} className="text-primary hover:text-primary/80 px-2 h-auto py-1">
                     <Edit3 className="mr-1.5 h-3.5 w-3.5" /> Edit
                 </Button>
-             )}
+              </div>
+            )}
           </div>
         </div>
         <Separator />
@@ -358,3 +383,4 @@ export default function JokeShowPage() {
   );
 }
 
+    
