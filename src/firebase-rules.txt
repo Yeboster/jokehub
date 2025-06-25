@@ -21,29 +21,35 @@ service cloud.firestore {
                       && (!('averageRating' in request.resource.data) || request.resource.data.averageRating is number)
                       && (!('ratingCount' in request.resource.data) || request.resource.data.ratingCount is number);
 
-      // Update rules:
-      // - Owners can update their joke's content (text, category, funnyRate, used) and also averageRating/ratingCount.
-      // - Any authenticated user can update *only* averageRating and/or ratingCount.
+      // Update rules are split into two main cases: an owner editing, or the system updating ratings.
       allow update: if request.auth != null && (
-        // Condition 1: Owner is updating their joke.
-        (resource.data.userId == request.auth.uid &&
-          request.resource.data.userId == resource.data.userId && // Cannot change owner
-          request.resource.data.dateAdded == resource.data.dateAdded && // Cannot change dateAdded
-          // Allow updates to core joke fields by owner
-          (request.resource.data.text == resource.data.text || (request.resource.data.text is string && request.resource.data.text.size() > 0)) &&
-          (request.resource.data.category == resource.data.category || (request.resource.data.category is string && request.resource.data.category.size() > 0)) &&
-          (request.resource.data.funnyRate == resource.data.funnyRate || (request.resource.data.funnyRate is number && request.resource.data.funnyRate >= 0 && request.resource.data.funnyRate <= 5)) &&
-          (request.resource.data.used == resource.data.used || request.resource.data.used is bool) &&
-          // Also allow owner to update rating fields (or ensure they are valid if included)
-          (request.resource.data.averageRating == resource.data.averageRating || request.resource.data.averageRating is number) &&
-          (request.resource.data.ratingCount == resource.data.ratingCount || request.resource.data.ratingCount is number)
+        // Condition 1: The owner is updating the joke's content.
+        (
+          resource.data.userId == request.auth.uid &&
+          // The owner cannot change these fields directly.
+          request.resource.data.userId == resource.data.userId &&
+          request.resource.data.dateAdded == resource.data.dateAdded &&
+          request.resource.data.averageRating == resource.data.averageRating &&
+          request.resource.data.ratingCount == resource.data.ratingCount &&
+          // The fields an owner *can* change must be valid in their final state.
+          request.resource.data.text is string && request.resource.data.text.size() > 0 &&
+          request.resource.data.category is string && request.resource.data.category.size() > 0 &&
+          request.resource.data.funnyRate is number && request.resource.data.funnyRate >= 0 && request.resource.data.funnyRate <= 5 &&
+          request.resource.data.used is bool
         ) ||
-        // Condition 2: Any authenticated user is updating *only* averageRating and/or ratingCount.
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['averageRating', 'ratingCount'])
-        // Also ensure that the updated fields are of the correct type
-        && (
-          (request.resource.data.averageRating is number) &&
-          (request.resource.data.ratingCount is number)
+        // Condition 2: Any authenticated user triggers an update to rating fields ONLY.
+        (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['averageRating', 'ratingCount']) &&
+          // Ensure other fields are not changed during a rating update.
+          request.resource.data.userId == resource.data.userId &&
+          request.resource.data.dateAdded == resource.data.dateAdded &&
+          request.resource.data.text == resource.data.text &&
+          request.resource.data.category == resource.data.category &&
+          request.resource.data.funnyRate == resource.data.funnyRate &&
+          request.resource.data.used == resource.data.used &&
+          // Validate the types of the rating fields.
+          request.resource.data.averageRating is number &&
+          request.resource.data.ratingCount is number
         )
       );
 
