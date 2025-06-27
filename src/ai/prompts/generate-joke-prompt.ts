@@ -5,7 +5,7 @@ Focus on generating jokes that are genuinely funny and engaging for a general au
 Be creative and think outside the box. Surprise me with your humor!`;
 
 export const jokeGenerationPrompt = (topic?: string, prefilledJoke?: string): string => {
-  let prompt = `Generate a 5-star rated joke`;
+  let prompt = `Generate a high-quality joke`;
   if (topic) {
     prompt += ` about: ${topic}.`;
   } else {

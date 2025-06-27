@@ -12,7 +12,6 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/contexts/AuthContext';
 import { useJokes } from '@/contexts/JokeContext';
 import Link from 'next/link';
@@ -30,7 +29,6 @@ import { cn } from '@/lib/utils';
 const jokeFormSchema = z.object({
   text: z.string().min(1, 'Joke text cannot be empty.'),
   category: z.string().trim().min(1, 'Category cannot be empty. Type a new one or select from suggestions.'),
-  funnyRate: z.coerce.number().min(0).max(5).optional().default(0),
 });
 
 export type JokeFormValues = z.infer<typeof jokeFormSchema>; // Exporting for use in parent
@@ -54,7 +52,6 @@ const AddJokeForm: FC<AddJokeFormProps> = ({ onAddJoke, aiGeneratedText, aiGener
     defaultValues: {
       text: '',
       category: '',
-      funnyRate: 0,
     },
   });
 
@@ -218,33 +215,6 @@ const AddJokeForm: FC<AddJokeFormProps> = ({ onAddJoke, aiGeneratedText, aiGener
                       </Popover>
                      <FormMessage />
                   </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="funnyRate"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-xs">Funny Rate</FormLabel> 
-                  <Select
-                    onValueChange={(value) => field.onChange(parseInt(value, 10))}
-                    value={field.value?.toString() ?? "0"}
-                    disabled={isFormDisabled}
-                  >
-                    <FormControl>
-                      <SelectTrigger className="text-sm h-9"> 
-                        <SelectValue placeholder="Select a rating" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="0">Unrated</SelectItem>
-                      {[1, 2, 3, 4, 5].map(rate => (
-                        <SelectItem key={rate} value={rate.toString()}>{rate} Star{rate > 1 ? 's' : ''}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
               )}
             />
              {form.formState.errors.root && (
