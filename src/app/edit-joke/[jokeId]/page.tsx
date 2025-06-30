@@ -33,7 +33,6 @@ import { cn } from '@/lib/utils';
 const editJokeFormSchema = z.object({
   text: z.string().min(1, 'Joke text cannot be empty.'),
   category: z.string().trim().min(1, 'Category cannot be empty. Type a new one or select from suggestions.'),
-  funnyRate: z.coerce.number().min(0).max(5).optional().default(0),
   used: z.boolean().optional().default(false),
 });
 
@@ -56,7 +55,7 @@ export default function EditJokePage() {
 
   const form = useForm<EditJokeFormValues>({
     resolver: zodResolver(editJokeFormSchema),
-    defaultValues: { text: '', category: '', funnyRate: 0, used: false },
+    defaultValues: { text: '', category: '', used: false },
   });
 
   useEffect(() => {
@@ -75,13 +74,11 @@ export default function EditJokePage() {
             setFetchError('You do not have permission to edit this joke.');
             toast({ title: 'Access Denied', description: 'You can only edit your own jokes.', variant: 'destructive' });
             setJoke(null);
-            // router.push('/jokes'); // Redirect if not owner
           } else {
             setJoke(fetchedJoke);
             form.reset({
               text: fetchedJoke.text,
               category: fetchedJoke.category,
-              funnyRate: fetchedJoke.funnyRate,
               used: fetchedJoke.used,
             });
             setCategorySearch(fetchedJoke.category);
@@ -114,7 +111,7 @@ export default function EditJokePage() {
         return;
     }
 
-     if (data.text === joke.text && data.category === joke.category && data.funnyRate === joke.funnyRate && data.used === joke.used) {
+     if (data.text === joke.text && data.category === joke.category && data.used === joke.used) {
          toast({ title: 'No Changes', description: 'No changes were made to the joke.' });
          router.push('/jokes'); // Redirect to the main jokes page
          return;
@@ -261,19 +258,6 @@ export default function EditJokePage() {
                           </Command>
                         </PopoverContent>
                       </Popover> <FormMessage />
-                  </FormItem>
-              )} />
-              <FormField control={form.control} name="funnyRate" render={({ field }) => (
-                  <FormItem> <FormLabel>Funny Rate</FormLabel>
-                    <FormControl>
-                      <Select onValueChange={(value) => field.onChange(parseInt(value, 10))} value={field.value?.toString() ?? "0"} disabled={isFormDisabled}>
-                        <SelectTrigger> <SelectValue placeholder="Select a rating" /> </SelectTrigger>
-                        <SelectContent> <SelectItem value="0">Unrated</SelectItem>
-                          {[1, 2, 3, 4, 5].map(rate => (<SelectItem key={rate} value={rate.toString()}>{rate} Star{rate > 1 ? 's' : ''}</SelectItem>))}
-                        </SelectContent>
-                      </Select>
-                    </FormControl>
-                    <FormMessage />
                   </FormItem>
               )} />
                <FormField
