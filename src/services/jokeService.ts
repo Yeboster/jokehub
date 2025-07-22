@@ -13,6 +13,7 @@ import {
   getDocs,
   getDoc,
   startAfter,
+  deleteDoc,
   type DocumentSnapshot,
   type QueryDocumentSnapshot,
 } from 'firebase/firestore';
@@ -21,12 +22,13 @@ import type { Joke, Category } from '@/lib/types';
 import { ensureCategoryExists } from './categoryService';
 
 const JOKES_COLLECTION = 'jokes';
+const JOKE_RATINGS_COLLECTION = 'jokeRatings';
 const PAGE_SIZE = 10;
 
 export interface FilterParams {
   selectedCategories: string[];
   filterFunnyRate: number;
-  usageStatus: 'all' | 'used' | 'unused'; // Changed from showOnlyUsed
+  usageStatus: 'all' | 'used' | 'unused';
   scope: 'public' | 'user';
 }
 
@@ -53,13 +55,11 @@ function buildJokesQuery(
     queryConstraints.push(where('funnyRate', '==', filters.filterFunnyRate));
   }
 
-  // Updated logic for usageStatus
   if (filters.usageStatus === 'used') {
     queryConstraints.push(where('used', '==', true));
   } else if (filters.usageStatus === 'unused') {
     queryConstraints.push(where('used', '==', false));
   }
-  // If 'all', no filter is applied for 'used' status
 
   queryConstraints.push(orderBy('dateAdded', 'desc'));
 
@@ -179,8 +179,8 @@ async function getJokeDoc(jokeId: string) {
   }
   
   export async function getJokeById(jokeId: string): Promise<Joke | null> {
-    const { ref } = await getJokeDoc(jokeId); // Re-use getJokeDoc
-    const docSnap = await getDoc(ref); // Use the ref from getJokeDoc
+    const { ref } = await getJokeDoc(jokeId);
+    const docSnap = await getDoc(ref);
     if (docSnap.exists()) {
       const data = docSnap.data();
       return { id: docSnap.id, ...data, dateAdded: (data.dateAdded as Timestamp).toDate() } as Joke;
@@ -190,7 +190,7 @@ async function getJokeDoc(jokeId: string) {
   
   export async function updateJoke(
     jokeId: string,
-    updatedData: Partial<Joke>, // This can now include 'used'
+    updatedData: Partial<Joke>,
     userId: string
   ) {
     const { ref, data } = await getJokeDoc(jokeId);
@@ -205,14 +205,33 @@ async function getJokeDoc(jokeId: string) {
     }
     if (updatedData.text !== undefined) dataToUpdate.text = updatedData.text;
     if (updatedData.funnyRate !== undefined) dataToUpdate.funnyRate = updatedData.funnyRate;
-    if (updatedData.used !== undefined) dataToUpdate.used = updatedData.used; // Add 'used' to updatable fields
+    if (updatedData.used !== undefined) dataToUpdate.used = updatedData.used;
   
     if (Object.keys(dataToUpdate).length === 0) {
-      // No changes to save, or only non-updatable fields were passed.
-      // Consider if this should be an error or just a silent return.
       return;
     }
   
     await updateDoc(ref, dataToUpdate);
   }
 
+  export async function deleteJoke(jokeId: string, userId: string) {
+    const { ref, data } = await getJokeDoc(jokeId);
+    if (data.userId !== userId) {
+      throw new Error('You can only delete your own jokes.');
+    }
+    
+    const batch = writeBatch(db);
+
+    // 1. Delete all ratings for the joke
+    const ratingsQuery = query(collection(db, JOKE_RATINGS_COLLECTION), where('jokeId', '==', jokeId));
+    const ratingsSnapshot = await getDocs(ratingsQuery);
+    ratingsSnapshot.forEach(ratingDoc => {
+      batch.delete(ratingDoc.ref);
+    });
+
+    // 2. Delete the joke itself
+    batch.delete(ref);
+
+    // 3. Commit the batch operation
+    await batch.commit();
+  }

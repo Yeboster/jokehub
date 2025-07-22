@@ -26,6 +26,7 @@ interface JokeContextProps {
   updateJokeCategory: (jokeId: string, newCategoryName: string) => Promise<void>;
   getJokeById: (jokeId: string) => Promise<Joke | null>;
   updateJoke: (jokeId: string, updatedData: Partial<Omit<Joke, 'id' | 'dateAdded' | 'userId'>>) => Promise<void>;
+  deleteJoke: (jokeId: string) => Promise<void>;
   loadJokesWithFilters: (filters: FilterParams) => Promise<void>;
   loadMoreFilteredJokes: () => Promise<void>;
   submitUserRating: (jokeId: string, stars: number, comment?: string) => Promise<void>;
@@ -74,14 +75,6 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [authLoading, toast]);
 
   const fetchJokesInternal = useCallback(async (filters: FilterParams, isLoadMore: boolean) => {
-    // The UI should prevent calling this if !hasMoreJokes or loadingMoreJokes is true.
-    // This internal check is a safeguard.
-    if (isLoadMore) {
-        // Access current state via state variables directly for this check
-        // This check is primarily for direct programmatic calls, UI handles button disable state.
-        // If `loadingMoreJokes` is true, or `hasMoreJokes` is false, don't proceed.
-    }
-
     if (filters.scope === 'user' && !user) {
       setJokes([]);
       setHasMoreJokes(false);
@@ -125,7 +118,7 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (isLoadMore) setLoadingMoreJokes(false);
       else setLoadingInitialJokes(false);
     }
-  }, [user, toast]); // Corrected dependencies: only external ones that define the function's behavior
+  }, [user, toast]);
 
   const loadJokesWithFilters = useCallback(
     async (filters: FilterParams) => {
@@ -136,10 +129,9 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
   
   const loadMoreFilteredJokes = useCallback(async () => {
-    // Guard clause using current state, as fetchJokesInternal's closure might be stale for these
     if (!hasMoreJokes || loadingMoreJokes) return; 
     await fetchJokesInternal(activeFiltersRef.current, true);
-  }, [fetchJokesInternal, hasMoreJokes, loadingMoreJokes]); // Add hasMoreJokes and loadingMoreJokes here
+  }, [fetchJokesInternal, hasMoreJokes, loadingMoreJokes]); 
 
 
   useEffect(() => {
@@ -283,6 +275,18 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
     [handleApiCall, user]
   );
 
+  const deleteJoke = useCallback(
+    (jokeId: string) => {
+        if (!user) throw new Error("User not authenticated for deleting a joke.");
+        return handleApiCall(
+            () => jokeService.deleteJoke(jokeId, user.uid),
+            'Joke deleted successfully!',
+            true 
+        )!;
+    },
+    [handleApiCall, user]
+  );
+
   const submitUserRating = useCallback(
     (jokeId: string, stars: number, comment?: string) => {
       if (!user) throw new Error("User not authenticated for submitting rating.");
@@ -333,6 +337,7 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
     updateJokeCategory,
     getJokeById,
     updateJoke,
+    deleteJoke,
     loadJokesWithFilters,
     loadMoreFilteredJokes,
     submitUserRating,
@@ -350,4 +355,3 @@ export const useJokes = (): JokeContextProps => {
   }
   return context;
 };
-

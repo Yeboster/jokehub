@@ -6,7 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Loader2, Save, ArrowLeft, ShieldAlert, Check, ChevronsUpDown } from 'lucide-react';
+import { Loader2, Save, ArrowLeft, ShieldAlert, Check, ChevronsUpDown, Trash2 } from 'lucide-react';
 
 import type { Joke } from '@/lib/types';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,10 +16,20 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import {
   Command,
   CommandEmpty,
@@ -43,10 +53,11 @@ export default function EditJokePage() {
   const router = useRouter();
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
-  const { getJokeById, updateJoke, categories, loadingInitialJokes: loadingCategories } = useJokes();
+  const { getJokeById, updateJoke, deleteJoke, categories, loadingInitialJokes: loadingCategories } = useJokes();
   const [joke, setJoke] = useState<Joke | null>(null);
   const [loadingJokeData, setLoadingJokeData] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [isCategoryPopoverOpen, setCategoryPopoverOpen] = useState(false);
   const [categorySearch, setCategorySearch] = useState('');
@@ -113,15 +124,15 @@ export default function EditJokePage() {
 
      if (data.text === joke.text && data.category === joke.category && data.used === joke.used) {
          toast({ title: 'No Changes', description: 'No changes were made to the joke.' });
-         router.push('/jokes'); // Redirect to the main jokes page
+         router.push('/jokes');
          return;
      }
 
     setIsSubmitting(true);
     try {
-      await updateJoke(joke.id, data); // data now includes 'used'
+      await updateJoke(joke.id, data);
       toast({ title: 'Success', description: 'Joke updated successfully!' });
-      router.push('/jokes'); // Redirect to the main jokes page
+      router.push('/jokes');
     } catch (error) {
       console.error("Failed to update joke:", error);
        if (!(error instanceof Error && (error.message.includes("Category") || error.message.includes("permission denied")))) {
@@ -132,11 +143,28 @@ export default function EditJokePage() {
     }
   };
 
-  const isFormDisabled = authLoading || loadingJokeData || loadingCategories || isSubmitting || !user || !!fetchError || (joke && joke.userId !== user?.uid);
+  const handleDelete = async () => {
+    if (!user || !joke) {
+      toast({ title: 'Error', description: 'Cannot delete joke. Please try again.', variant: 'destructive' });
+      return;
+    }
+    setIsDeleting(true);
+    try {
+      await deleteJoke(joke.id);
+      toast({ title: 'Success', description: 'Joke has been deleted.' });
+      router.push('/jokes');
+    } catch (error) {
+       console.error("Failed to delete joke:", error);
+       toast({ title: 'Delete Error', description: 'Failed to delete joke.', variant: 'destructive' });
+    } finally {
+       setIsDeleting(false);
+    }
+  };
+
+  const isFormDisabled = authLoading || loadingJokeData || loadingCategories || isSubmitting || isDeleting || !user || !!fetchError || (joke && joke.userId !== user?.uid);
 
   const categoryNames = useMemo(() => {
     if (!categories || !user) return [];
-    // For editing, show categories created by this user.
     return Array.isArray(categories) ? categories.filter(cat => cat.userId === user.uid).map(cat => cat.name).sort() : [];
   }, [categories, user]);
 
@@ -215,7 +243,7 @@ export default function EditJokePage() {
       <Card className="max-w-2xl mx-auto">
         <CardHeader>
           <CardTitle>Update Joke Details</CardTitle>
-          <CardDescription>Make changes to the joke text, category, rating, or usage status.</CardDescription>
+          <CardDescription>Make changes to the joke text, category, or usage status.</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -281,14 +309,43 @@ export default function EditJokePage() {
                   </FormItem>
                 )}
               />
-              <div className="flex flex-col sm:flex-row gap-2 justify-end">
-                 <Button type="button" variant="outline" onClick={() => router.push('/jokes')} disabled={isSubmitting}>
-                    <ArrowLeft className="mr-2 h-4 w-4" /> Cancel
-                 </Button>
-                 <Button type="submit" disabled={isFormDisabled}>
-                  {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                  {isSubmitting ? 'Saving...' : 'Save Changes'}
-                 </Button>
+              <div className="flex flex-col sm:flex-row gap-2 justify-between items-center">
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button type="button" variant="destructive" disabled={isFormDisabled}>
+                        <Trash2 className="mr-2 h-4 w-4" /> Delete Joke
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Are you sure you want to delete this joke?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This action cannot be undone. This will permanently delete your joke and all associated ratings from our servers.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleDelete}
+                        disabled={isDeleting}
+                        className="bg-destructive hover:bg-destructive/90"
+                      >
+                         {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                         {isDeleting ? 'Deleting...' : 'Yes, delete joke'}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+
+                <div className="flex flex-col sm:flex-row gap-2">
+                    <Button type="button" variant="outline" onClick={() => router.push('/jokes')} disabled={isFormDisabled}>
+                        <ArrowLeft className="mr-2 h-4 w-4" /> Cancel
+                    </Button>
+                    <Button type="submit" disabled={isFormDisabled}>
+                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                    {isSubmitting ? 'Saving...' : 'Save Changes'}
+                    </Button>
+                </div>
               </div>
             </form>
           </Form>
