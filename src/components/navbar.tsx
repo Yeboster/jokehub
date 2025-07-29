@@ -33,7 +33,6 @@ const Navbar = () => {
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center space-x-2">
             <Image src="/logo.png" alt="Joke Hub Logo" width={32} height={32} />
-            <span className="text-2xl font-bold text-primary">Joke Hub</span>
           </Link>
           <div className="flex items-center space-x-2 sm:space-x-4">
             <Loader2 className="h-5 w-5 animate-spin text-primary" />
@@ -48,7 +47,6 @@ const Navbar = () => {
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center space-x-2">
           <Image src="/logo.png" alt="Joke Hub Logo" width={32} height={32} />
-          <span className="text-2xl font-bold text-primary">Joke Hub</span>
         </Link>
         <div className="flex items-center space-x-1 sm:space-x-2">
           {navItems.map((item) =>

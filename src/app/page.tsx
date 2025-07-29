@@ -5,9 +5,10 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useJokes, type FilterParams } from '@/contexts/JokeContext';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowRight, Laugh, Loader2, PlusCircle } from 'lucide-react';
+import { ArrowRight, Loader2, PlusCircle } from 'lucide-react';
 import type { Joke } from '@/lib/types';
 import JokeListItem from '@/components/joke-list-item';
 
@@ -48,7 +49,7 @@ export default function LandingPage() {
   return (
     <div className="container mx-auto px-4 py-10 sm:py-16 text-center">
       <header className="mb-12 sm:mb-16">
-        <Laugh className="mx-auto h-16 w-16 sm:h-20 sm:w-20 text-primary mb-5" />
+        <Image src="/logo.png" alt="Joke Hub Logo" width={80} height={80} className="mx-auto mb-5" />
         <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-primary mb-4">
           Welcome to Joke Hub!
         </h1>
