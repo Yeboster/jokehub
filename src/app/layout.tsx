@@ -20,6 +20,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: 'Joke Hub',
   description: 'Manage and filter your jokes',
+  icons: {
+    icon: '/logo.png',
+  },
 };
 
 export default function RootLayout({
