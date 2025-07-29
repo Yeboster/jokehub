@@ -26,7 +26,7 @@ export default function LandingPage() {
     const filters: FilterParams = {
       selectedCategories: [],
       filterFunnyRate: -1,
-      showOnlyUsed: false,
+      usageStatus: 'all',
       scope: 'public',
     };
     loadJokesWithFilters(filters);
@@ -97,7 +97,7 @@ export default function LandingPage() {
 
         {user && (
            <Button size="lg" variant="outline" asChild className="px-6 py-3 rounded-lg border-primary/50 text-primary hover:bg-primary/5 hover:text-primary">
-            <Link href="/jokes">
+            <Link href="/jokes?scope=user">
               View My Collection
             </Link>
           </Button>
