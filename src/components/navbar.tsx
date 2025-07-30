@@ -30,9 +30,9 @@ const Navbar = () => {
   if (loading) {
     return (
       <nav className="bg-background sticky top-0 z-50 border-b border-border/50">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+        <div className="container mx-auto px-4 h-28 flex items-center justify-between">
           <Link href="/" className="flex items-center space-x-2">
-            <Image src="/logo.png" alt="Joke Hub Logo" width={32} height={32} />
+            <Image src="/logo.png" alt="Joke Hub Logo" width={96} height={96} />
           </Link>
           <div className="flex items-center space-x-2 sm:space-x-4">
             <Loader2 className="h-5 w-5 animate-spin text-primary" />
@@ -44,9 +44,9 @@ const Navbar = () => {
 
   return (
     <nav className="bg-background sticky top-0 z-50 border-b border-border/50">
-      <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+      <div className="container mx-auto px-4 h-28 flex items-center justify-between">
         <Link href="/" className="flex items-center space-x-2">
-          <Image src="/logo.png" alt="Joke Hub Logo" width={32} height={32} />
+          <Image src="/logo.png" alt="Joke Hub Logo" width={96} height={96} />
         </Link>
         <div className="flex items-center space-x-1 sm:space-x-2">
           {navItems.map((item) =>
