@@ -49,7 +49,7 @@ export default function LandingPage() {
   return (
     <div className="container mx-auto px-4 py-10 sm:py-16 text-center">
       <header className="mb-12 sm:mb-16">
-        <Logo width={500} className="mx-auto mb-5" />
+        <Logo width={400} className="mx-auto mb-5" />
         <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-16">
           Your personal space to collect, create, and cherish every chuckle. Dive in and let the laughter begin!
         </p>
