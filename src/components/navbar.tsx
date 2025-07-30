@@ -2,7 +2,6 @@
 "use client";
 
 import Link from 'next/link';
-import Image from 'next/image';
 import { Home, Settings, LogIn, LogOut, UserCircle, Loader2, ListChecks } from 'lucide-react'; 
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -16,6 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import Logo from './logo';
 
 const Navbar = () => {
   const pathname = usePathname();
@@ -23,7 +23,7 @@ const Navbar = () => {
 
   const navItems = [
     { href: '/', label: 'Home', icon: Home, public: true },
-    { href: '/jokes', label: 'Jokes', icon: ListChecks, public: true }, // Changed icon from Laugh to ListChecks for "Jokes"
+    { href: '/jokes', label: 'Jokes', icon: ListChecks, public: true },
     { href: '/manage', label: 'Manage', icon: Settings, public: false, requiresAuth: true },
   ];
 
@@ -32,7 +32,7 @@ const Navbar = () => {
       <nav className="bg-background sticky top-0 z-50 border-b border-border/50">
         <div className="container mx-auto px-4 h-28 flex items-center justify-between">
           <Link href="/" className="flex items-center space-x-2">
-            <Image src="/logo.png" alt="Joke Hub Logo" width={96} height={22} />
+            <Logo width={96} priority />
           </Link>
           <div className="flex items-center space-x-2 sm:space-x-4">
             <Loader2 className="h-5 w-5 animate-spin text-primary" />
@@ -46,7 +46,7 @@ const Navbar = () => {
     <nav className="bg-background sticky top-0 z-50 border-b border-border/50">
       <div className="container mx-auto px-4 h-28 flex items-center justify-between">
         <Link href="/" className="flex items-center space-x-2">
-          <Image src="/logo.png" alt="Joke Hub Logo" width={96} height={22} />
+          <Logo width={96} priority />
         </Link>
         <div className="flex items-center space-x-1 sm:space-x-2">
           {navItems.map((item) =>
