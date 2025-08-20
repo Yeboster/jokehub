@@ -16,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import Logo from './logo';
+import { ThemeToggle } from './theme-toggle';
 
 const Navbar = () => {
   const pathname = usePathname();
@@ -100,6 +101,7 @@ const Navbar = () => {
               </Button>
             )
           )}
+          <ThemeToggle />
         </div>
       </div>
     </nav>

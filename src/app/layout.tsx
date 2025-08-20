@@ -5,7 +5,8 @@ import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import Navbar from '@/components/navbar';
 import { JokeProvider } from '@/contexts/JokeContext';
-import { AuthProvider } from '@/contexts/AuthContext'; // Import AuthProvider
+import { AuthProvider } from '@/contexts/AuthContext';
+import { ThemeProvider } from '@/components/theme-provider';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -36,15 +37,22 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen`}
         suppressHydrationWarning={true}
       >
-        <AuthProvider> {/* Wrap with AuthProvider */}
-          <JokeProvider>
-            <Navbar />
-            <main className="flex-grow">
-               {children}
-            </main>
-            <Toaster />
-          </JokeProvider>
-        </AuthProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <AuthProvider>
+            <JokeProvider>
+              <Navbar />
+              <main className="flex-grow">
+                 {children}
+              </main>
+              <Toaster />
+            </JokeProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
