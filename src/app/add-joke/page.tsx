@@ -18,6 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { AnimatePresence, motion } from 'framer-motion';
+import { Slider } from '@/components/ui/slider';
 
 export default function AddJokePage() {
   const { user, loading: authLoading } = useAuth();
@@ -30,6 +31,7 @@ export default function AddJokePage() {
   const [aiGeneratedJokes, setAiGeneratedJokes] = useState<JokeVariation[]>([]);
   const [selectedJoke, setSelectedJoke] = useState<JokeVariation | null>(null);
   const [selectedModel, setSelectedModel] = useState('googleai/gemini-2.5-flash');
+  const [temperature, setTemperature] = useState([0.8]);
   
   useEffect(() => {
     if (!authLoading && !user) {
@@ -51,7 +53,12 @@ export default function AddJokePage() {
       const response = await fetch('/api/generate-joke', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topicHint: trimmedTopicHint, prefilledJokes, model: selectedModel }),
+        body: JSON.stringify({
+          topicHint: trimmedTopicHint,
+          prefilledJokes,
+          model: selectedModel,
+          temperature: temperature[0],
+        }),
       });
 
       if (!response.ok) {
@@ -229,7 +236,7 @@ export default function AddJokePage() {
                               </Button>
                         </motion.div>
                     ) : (
-                        <motion.div key="ai-controls" className="space-y-4">
+                        <motion.div key="ai-controls" className="space-y-6">
                             <div>
                                 <Label htmlFor="ai-model-select" className="text-sm font-medium">AI Model</Label>
                                 <Select value={selectedModel} onValueChange={setSelectedModel} disabled={isGeneratingJoke}>
@@ -241,6 +248,26 @@ export default function AddJokePage() {
                                     <SelectItem value="googleai/gemini-2.5-pro">Gemini 2.5 Pro (Powerful)</SelectItem>
                                 </SelectContent>
                                 </Select>
+                            </div>
+                            <div>
+                                <div className="flex justify-between items-center mb-1">
+                                    <Label htmlFor="temperature-slider" className="text-sm font-medium">Creativity (Temperature)</Label>
+                                    <span className="text-sm font-mono text-muted-foreground">{temperature[0].toFixed(1)}</span>
+                                </div>
+                                <Slider
+                                    id="temperature-slider"
+                                    min={0}
+                                    max={2}
+                                    step={0.1}
+                                    value={temperature}
+                                    onValueChange={setTemperature}
+                                    disabled={isGeneratingJoke}
+                                />
+                                <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                                    <span>Predictable</span>
+                                    <span>Creative</span>
+                                    <span>Wild</span>
+                                </div>
                             </div>
                             <div>
                                 <Label htmlFor="ai-topic-hint-page" className="text-sm font-medium">Topic Hint (Optional)</Label>
