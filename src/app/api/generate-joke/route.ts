@@ -7,6 +7,7 @@ import { z } from 'zod';
 const ApiInputSchema = z.object({
   topicHint: z.string().optional(),
   prefilledJoke: z.string().optional(),
+  model: z.enum(['googleai/gemini-2.5-flash', 'googleai/gemini-2.5-pro']).optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -18,10 +19,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid input', details: parsedInput.error.format() }, { status: 400 });
     }
 
-    const { topicHint, prefilledJoke } = parsedInput.data;
+    const { topicHint, prefilledJoke, model } = parsedInput.data;
 
     // Prepare the input for the Genkit flow
-    const aiInput: GenerateJokeInput = { topicHint, prefilledJoke };
+    const aiInput: GenerateJokeInput = { topicHint, prefilledJoke, model };
     
     // Call the server-side Genkit flow
     const aiOutput: GenerateJokeOutput = await generateJoke(aiInput);

@@ -20,6 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function AddJokePage() {
   const { user, loading: authLoading } = useAuth();
@@ -31,6 +32,7 @@ export default function AddJokePage() {
   const [aiTopicHint, setAiTopicHint] = useState<string | undefined>('');
   const [aiGeneratedText, setAiGeneratedText] = useState<string | undefined>();
   const [aiGeneratedCategory, setAiGeneratedCategory] = useState<string | undefined>();
+  const [selectedModel, setSelectedModel] = useState('googleai/gemini-2.5-flash');
   
   // Effect for redirecting if user is not authenticated after auth check
   useEffect(() => {
@@ -50,7 +52,7 @@ export default function AddJokePage() {
       const response = await fetch('/api/generate-joke', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topicHint: trimmedTopicHint, prefilledJoke: aiGeneratedText }),
+        body: JSON.stringify({ topicHint: trimmedTopicHint, prefilledJoke: aiGeneratedText, model: selectedModel }),
       });
 
       if (!response.ok) {
@@ -148,6 +150,18 @@ export default function AddJokePage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
+              <div>
+                <Label htmlFor="ai-model-select" className="text-sm font-medium">AI Model</Label>
+                <Select value={selectedModel} onValueChange={setSelectedModel} disabled={isGeneratingJoke}>
+                  <SelectTrigger id="ai-model-select" className="mt-1">
+                    <SelectValue placeholder="Select a model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="googleai/gemini-2.5-flash">Gemini 2.5 Flash (Fast)</SelectItem>
+                    <SelectItem value="googleai/gemini-2.5-pro">Gemini 2.5 Pro (Powerful)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div>
                 <Label htmlFor="ai-topic-hint-page" className="text-sm font-medium">Topic Hint (Optional)</Label>
                 <Input

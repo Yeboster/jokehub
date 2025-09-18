@@ -15,6 +15,7 @@ import { z } from 'genkit';
 const GenerateJokeInputSchema = z.object({
   topicHint: z.string().optional().describe('An optional topic or category hint for the joke.'),
   prefilledJoke: z.string().optional().describe('A prefilled joke to ensure the generated joke is different.'),
+  model: z.enum(['googleai/gemini-2.5-flash', 'googleai/gemini-2.5-pro']).optional().describe('The model to use for generation.'),
 });
 
 export type GenerateJokeInput = z.infer<typeof GenerateJokeInputSchema>;
@@ -40,6 +41,7 @@ const generateJokeFlow = ai.defineFlow(
 
     const res = await ai.generate({
       prompt,
+      model: input.model || 'googleai/gemini-2.5-flash', // Default to flash if not provided
       system: systemInstruction,
       output: { schema: GenerateJokeOutputSchema }
     });
