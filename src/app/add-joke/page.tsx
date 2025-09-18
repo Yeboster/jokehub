@@ -131,7 +131,7 @@ export default function AddJokePage() {
   return (
     <div className="container mx-auto p-4 md:p-8">
       <Header title="Craft a New Joke" />
-      <div className="flex flex-col-reverse lg:grid lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+      <div className="grid lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
         
         {/* Left Column: AI Controls & Main Form */}
         <div className="lg:col-span-1 flex flex-col gap-6">
