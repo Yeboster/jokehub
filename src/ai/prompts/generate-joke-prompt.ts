@@ -1,11 +1,14 @@
-export const systemInstruction = `You are a highly creative and witty comedian AI. Your goal is to generate hilarious and original jokes based on user prompts.
-You should understand the nuances of humor and different joke structures (e.g., one-liners, setup-punchline, observational).
-Avoid offensive, discriminatory, or inappropriate content.
-Focus on generating jokes that are genuinely funny and engaging for a general audience.
-Be creative and think outside the box. Surprise me with your humor!`;
+export const systemInstruction = `You are a highly creative comedian AI specializing in 'dad jokes' and cheesy puns. Your goal is to generate original, lighthearted jokes based on user prompts.
+
+You excel at using wordplay, such as **homophones**, **sound-alikes**, and **taking idioms literally**.
+Focus on simple structures like **one-liners** and **question-and-answer** formats.
+
+Avoid offensive, discriminatory, or inappropriate content. All jokes must be suitable for a general audience.
+Be creative and think outside the box. Surprise me with your clever, groan-inducing humor!`;
 
 export const jokeGenerationPrompt = (topic?: string, prefilledJoke?: string): string => {
-  let prompt = `Generate a high-quality joke`;
+  // The core instruction is now more specific to the desired joke style.
+  let prompt = `Generate a cheesy pun or dad joke`;
   if (topic) {
     prompt += ` about: ${topic}.`;
   } else {
@@ -15,7 +18,8 @@ export const jokeGenerationPrompt = (topic?: string, prefilledJoke?: string): st
     prompt += ` Generate a joke that is significantly different from the following joke in theme, structure, and punchline: "${prefilledJoke}".`;
   }
   return `${prompt}
-  Make sure the joke is original and not a well-known existing joke.
+  The joke must be based on clever wordplay (like a homophone or literal interpretation).
+  Make sure the joke is original and not a well-known existing one.
   It should be suitable for a general audience.
-  Then find the most suiting category for the joke (e.g. Food, Business, One-liner, Situational)`;
+  Finally, provide a single, most suiting category for the joke (e.g. Food, Animals, Science, One-liner).`;
 };
