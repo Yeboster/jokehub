@@ -3,38 +3,34 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-// useForm, zodResolver, z are not directly used in this simplified loading logic section, but kept for the form
-// import { useForm } from 'react-hook-form';
-// import { zodResolver } from '@hookform/resolvers/zod';
-// import { z } from 'zod';
-import { Loader2, Wand2, PlusCircle, ArrowLeft, ShieldAlert } from 'lucide-react';
+import { Loader2, Wand2, PlusCircle, ArrowLeft, ShieldAlert, Sparkles, CheckCircle } from 'lucide-react';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { useJokes } from '@/contexts/JokeContext';
-import type { GenerateJokeOutput } from '@/ai/flows/generate-joke-flow';
+import type { GenerateJokeOutput, JokeVariation } from '@/ai/flows/generate-joke-flow';
 import Header from '@/components/header';
 import AddJokeForm, { type JokeFormValues } from '@/components/add-joke-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { AnimatePresence, motion } from 'framer-motion';
 
 export default function AddJokePage() {
   const { user, loading: authLoading } = useAuth();
-  const { addJoke, loadingInitialJokes: loadingContext } = useJokes(); // loadingContext is loadingInitialJokes
+  const { addJoke, loadingInitialJokes: loadingContext } = useJokes();
   const router = useRouter();
   const { toast } = useToast();
 
   const [isGeneratingJoke, setIsGeneratingJoke] = useState(false);
-  const [aiTopicHint, setAiTopicHint] = useState<string | undefined>('');
-  const [aiGeneratedText, setAiGeneratedText] = useState<string | undefined>();
-  const [aiGeneratedCategory, setAiGeneratedCategory] = useState<string | undefined>();
+  const [aiTopicHint, setAiTopicHint] = useState<string>('');
+  const [aiGeneratedJokes, setAiGeneratedJokes] = useState<JokeVariation[]>([]);
+  const [selectedJoke, setSelectedJoke] = useState<JokeVariation | null>(null);
   const [selectedModel, setSelectedModel] = useState('googleai/gemini-2.5-flash');
   
-  // Effect for redirecting if user is not authenticated after auth check
   useEffect(() => {
     if (!authLoading && !user) {
       router.push('/auth?redirect=/add-joke');
@@ -47,12 +43,15 @@ export default function AddJokePage() {
       return;
     }
     setIsGeneratingJoke(true);
+    setSelectedJoke(null);
     try {
-      const trimmedTopicHint = aiTopicHint?.trim();
+      const trimmedTopicHint = aiTopicHint.trim();
+      const prefilledJokes = aiGeneratedJokes.map(j => j.jokeText);
+
       const response = await fetch('/api/generate-joke', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topicHint: trimmedTopicHint, prefilledJoke: aiGeneratedText, model: selectedModel }),
+        body: JSON.stringify({ topicHint: trimmedTopicHint, prefilledJokes, model: selectedModel }),
       });
 
       if (!response.ok) {
@@ -61,15 +60,18 @@ export default function AddJokePage() {
         throw new Error(errorData?.error || `API request failed with status ${response.status}`);
       }
       const result: GenerateJokeOutput = await response.json();
-      setAiGeneratedText(result.jokeText);
-      setAiGeneratedCategory(result.category ? result.category.trim() : '');
-      toast({ title: 'Joke Generated!', description: 'The joke has been pre-filled in the form.' });
+      setAiGeneratedJokes(result.jokes);
+      toast({ title: 'Jokes Generated!', description: 'Choose your favorite from the new variations below.' });
     } catch (error: any) {
       console.error("Error generating joke via API:", error);
-      toast({ title: 'AI Error', description: error.message || 'Failed to generate joke.', variant: 'destructive' });
+      toast({ title: 'AI Error', description: error.message || 'Failed to generate jokes.', variant: 'destructive' });
     } finally {
       setIsGeneratingJoke(false);
     }
+  };
+
+  const handleSelectJoke = (joke: JokeVariation) => {
+    setSelectedJoke(joke);
   };
 
   const handleAddJokeAndRedirect = async (data: JokeFormValues) => {
@@ -86,11 +88,6 @@ export default function AddJokePage() {
     }
   };
   
-  const handleAiJokeUsedInForm = () => {
-    // Optional: Clear AI fields or keep for next generation
-  };
-
-  // 1. Check Authentication Loading State
   if (authLoading) {
     return (
       <div className="container mx-auto p-4 md:p-8 flex flex-col justify-center items-center min-h-[calc(100vh-8rem)]">
@@ -100,8 +97,6 @@ export default function AddJokePage() {
     );
   }
 
-  // 2. Auth is resolved. Check if user exists.
-  // The useEffect above handles redirection, this is a fallback UI or for while redirect is processing.
   if (!user) {
      return (
         <div className="container mx-auto p-4 md:p-8">
@@ -124,7 +119,6 @@ export default function AddJokePage() {
      );
   }
 
-  // 3. User exists and auth is resolved. Check JokeContext loading state (for categories, etc.)
   if (loadingContext) {
     return (
       <div className="container mx-auto p-4 md:p-8 flex flex-col justify-center items-center min-h-[calc(100vh-8rem)]">
@@ -134,22 +128,23 @@ export default function AddJokePage() {
     );
   }
 
-  // All clear: Auth resolved, user exists, JokeContext data loaded.
   return (
     <div className="container mx-auto p-4 md:p-8">
       <Header title="Craft a New Joke" />
-      <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-        <div className="md:col-span-1 flex flex-col space-y-4">
-          <Card className="flex-grow">
+      <div className="flex flex-col-reverse lg:grid lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+        
+        {/* Left Column: AI Controls & Main Form */}
+        <div className="lg:col-span-1 flex flex-col gap-6">
+          <Card className="sticky top-24">
             <CardHeader>
               <CardTitle className="text-lg flex items-center">
                 <Wand2 className="mr-2 h-5 w-5 text-primary"/> AI Assistant
               </CardTitle>
               <CardDescription className="text-sm">
-                Let AI spark your creativity or generate a full joke.
+                Spark your creativity. Generate three jokes at once!
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-4">
               <div>
                 <Label htmlFor="ai-model-select" className="text-sm font-medium">AI Model</Label>
                 <Select value={selectedModel} onValueChange={setSelectedModel} disabled={isGeneratingJoke}>
@@ -168,7 +163,7 @@ export default function AddJokePage() {
                   id="ai-topic-hint-page"
                   type="text"
                   placeholder="e.g., animals, space"
-                  value={aiTopicHint || ''}
+                  value={aiTopicHint}
                   onChange={(e) => setAiTopicHint(e.target.value)}
                   disabled={isGeneratingJoke}
                   className="mt-1"
@@ -176,21 +171,36 @@ export default function AddJokePage() {
               </div>
               <Button
                 onClick={handleGenerateJoke}
-                disabled={isGeneratingJoke || !user} // Redundant !user check here as page already confirms user, but harmless
+                disabled={isGeneratingJoke || !user}
                 className="w-full"
               >
-                {isGeneratingJoke ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Wand2 className="mr-2 h-4 w-4" />
-                )}
-                {isGeneratingJoke ? 'Generating...' : (aiGeneratedText ? 'Generate Another' : 'Generate Joke')}
+                {isGeneratingJoke ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
+                {isGeneratingJoke ? 'Generating...' : (aiGeneratedJokes.length > 0 ? 'Generate Again' : 'Generate 3 Jokes')}
               </Button>
-              {aiGeneratedText && (
-                <p className="text-xs text-muted-foreground pt-1">
-                  Tip: Click generate again. The current text will be used to encourage variety.
+              {aiGeneratedJokes.length > 0 && (
+                <p className="text-xs text-muted-foreground pt-1 text-center">
+                  Tip: The current jokes will be used to encourage variety on the next generation.
                 </p>
               )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center">
+                <PlusCircle className="mr-2 h-5 w-5 text-primary"/> Your New Joke
+              </CardTitle>
+              <CardDescription className="text-sm">
+                {selectedJoke ? "Review the selected joke, or fill in your own." : "Select a generated joke or write your own."}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <AddJokeForm
+                onAddJoke={handleAddJokeAndRedirect}
+                aiGeneratedText={selectedJoke?.jokeText}
+                aiGeneratedCategory={selectedJoke?.category}
+                onAiJokeSubmitted={() => { setSelectedJoke(null); setAiGeneratedJokes([]); }}
+              />
             </CardContent>
           </Card>
            <Button variant="outline" onClick={() => router.push('/jokes')} className="w-full mt-auto">
@@ -198,26 +208,66 @@ export default function AddJokePage() {
           </Button>
         </div>
 
-        <div className="md:col-span-2">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center">
-                <PlusCircle className="mr-2 h-5 w-5 text-primary"/> Your New Joke
-              </CardTitle>
-              <CardDescription className="text-sm">
-                {aiGeneratedText ? "Review the AI-generated joke below, or clear and write your own." : "Fill in the details for your joke below."}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <AddJokeForm
-                onAddJoke={handleAddJokeAndRedirect}
-                aiGeneratedText={aiGeneratedText}
-                aiGeneratedCategory={aiGeneratedCategory}
-                onAiJokeSubmitted={handleAiJokeUsedInForm}
-              />
-            </CardContent>
-          </Card>
+        {/* Right Column: AI Generated Jokes */}
+        <div className="lg:col-span-2">
+            <AnimatePresence>
+            {isGeneratingJoke && (
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="flex flex-col items-center justify-center min-h-[300px] lg:min-h-full bg-card rounded-lg border border-dashed"
+                >
+                    <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
+                    <p className="text-lg font-medium text-muted-foreground">Generating witty humor...</p>
+                    <p className="text-sm text-muted-foreground">This may take a moment.</p>
+                </motion.div>
+            )}
+            </AnimatePresence>
+            
+            {!isGeneratingJoke && aiGeneratedJokes.length === 0 && (
+                 <div className="flex flex-col items-center justify-center min-h-[300px] lg:min-h-full bg-card rounded-lg border border-dashed p-8 text-center">
+                    <Sparkles className="h-10 w-10 text-primary mb-4" />
+                    <h3 className="text-xl font-semibold text-foreground">Joke Variations Appear Here</h3>
+                    <p className="mt-2 text-muted-foreground">Use the AI Assistant to generate a few options to get you started!</p>
+                </div>
+            )}
+          
+            {!isGeneratingJoke && aiGeneratedJokes.length > 0 && (
+                <div className="space-y-4">
+                    <h2 className="text-2xl font-bold text-center">Choose Your Favorite</h2>
+                    <AnimatePresence>
+                    {aiGeneratedJokes.map((joke, index) => (
+                    <motion.div
+                        key={`${isGeneratingJoke}-${index}`} // Use a key that changes on regeneration
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        transition={{ duration: 0.3, delay: index * 0.1 }}
+                    >
+                        <Card className={`overflow-hidden transition-all duration-300 ${selectedJoke === joke ? 'border-primary shadow-primary/20 shadow-lg' : 'border-border'}`}>
+                            <CardContent className="p-5">
+                                <p className="text-base text-foreground leading-relaxed">{joke.jokeText}</p>
+                            </CardContent>
+                            <CardFooter className="bg-muted/40 p-3 flex justify-between items-center">
+                                <Badge variant="secondary">{joke.category}</Badge>
+                                <Button
+                                variant={selectedJoke === joke ? 'default' : 'outline'}
+                                size="sm"
+                                onClick={() => handleSelectJoke(joke)}
+                                >
+                                {selectedJoke === joke && <CheckCircle className="mr-2 h-4 w-4" />}
+                                {selectedJoke === joke ? 'Selected' : 'Use this Joke'}
+                                </Button>
+                            </CardFooter>
+                        </Card>
+                    </motion.div>
+                    ))}
+                    </AnimatePresence>
+                </div>
+            )}
         </div>
+
       </div>
     </div>
   );

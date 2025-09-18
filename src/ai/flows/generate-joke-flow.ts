@@ -14,17 +14,23 @@ import { z } from 'genkit';
 
 const GenerateJokeInputSchema = z.object({
   topicHint: z.string().optional().describe('An optional topic or category hint for the joke.'),
-  prefilledJoke: z.string().optional().describe('A prefilled joke to ensure the generated joke is different.'),
+  prefilledJokes: z.array(z.string()).optional().describe('A list of prefilled jokes to ensure the generated jokes are different.'),
   model: z.enum(['googleai/gemini-2.5-flash', 'googleai/gemini-2.5-pro']).optional().describe('The model to use for generation.'),
 });
 
 export type GenerateJokeInput = z.infer<typeof GenerateJokeInputSchema>;
 
-const GenerateJokeOutputSchema = z.object({
+const JokeObjectSchema = z.object({
   jokeText: z.string().describe('The generated joke, including setup and punchline.'),
   category: z.string().describe('A suggested category for the joke (e.g., Animals, Puns, Work).'),
 });
+
+const GenerateJokeOutputSchema = z.object({
+    jokes: z.array(JokeObjectSchema).describe('An array of three different jokes.'),
+});
 export type GenerateJokeOutput = z.infer<typeof GenerateJokeOutputSchema>;
+export type JokeVariation = z.infer<typeof JokeObjectSchema>;
+
 
 export async function generateJoke(input: GenerateJokeInput): Promise<GenerateJokeOutput> {
   return generateJokeFlow(input);
@@ -37,7 +43,7 @@ const generateJokeFlow = ai.defineFlow(
     outputSchema: GenerateJokeOutputSchema,
   },
   async (input) => {
-    const prompt = jokeGenerationPrompt(input.topicHint, input.prefilledJoke);
+    const prompt = jokeGenerationPrompt(input.topicHint, input.prefilledJokes);
 
     const res = await ai.generate({
       prompt,
