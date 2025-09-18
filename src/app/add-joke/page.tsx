@@ -133,7 +133,7 @@ export default function AddJokePage() {
       <Header title="Craft a New Joke" />
       <div className="grid lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
         
-        {/* Left Column: AI Controls & Main Form */}
+        {/* Left Column: AI Controls */}
         <div className="lg:col-span-1 flex flex-col gap-6">
           <Card className="sticky top-24">
             <CardHeader>
@@ -141,7 +141,7 @@ export default function AddJokePage() {
                 <Wand2 className="mr-2 h-5 w-5 text-primary"/> AI Assistant
               </CardTitle>
               <CardDescription className="text-sm">
-                Spark your creativity. Generate three jokes at once!
+                Need inspiration? Generate three jokes at once!
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -179,40 +179,23 @@ export default function AddJokePage() {
               </Button>
               {aiGeneratedJokes.length > 0 && (
                 <p className="text-xs text-muted-foreground pt-1 text-center">
-                  Tip: The current jokes will be used to encourage variety on the next generation.
+                  Tip: Regenerating will use current jokes to encourage variety.
                 </p>
               )}
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center">
-                <PlusCircle className="mr-2 h-5 w-5 text-primary"/> Your New Joke
-              </CardTitle>
-              <CardDescription className="text-sm">
-                {selectedJoke ? "Review the selected joke, or fill in your own." : "Select a generated joke or write your own."}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <AddJokeForm
-                onAddJoke={handleAddJokeAndRedirect}
-                aiGeneratedText={selectedJoke?.jokeText}
-                aiGeneratedCategory={selectedJoke?.category}
-                onAiJokeSubmitted={() => { setSelectedJoke(null); setAiGeneratedJokes([]); }}
-              />
-            </CardContent>
-          </Card>
            <Button variant="outline" onClick={() => router.push('/jokes')} className="w-full mt-auto">
             <ArrowLeft className="mr-2 h-4 w-4" /> Back to Jokes List
           </Button>
         </div>
 
-        {/* Right Column: AI Generated Jokes */}
+        {/* Right Column: Main Content (Form or AI Jokes) */}
         <div className="lg:col-span-2">
-            <AnimatePresence>
-            {isGeneratingJoke && (
+            <AnimatePresence mode="wait">
+            {isGeneratingJoke ? (
                 <motion.div
+                    key="loading"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
@@ -222,19 +205,8 @@ export default function AddJokePage() {
                     <p className="text-lg font-medium text-muted-foreground">Generating witty humor...</p>
                     <p className="text-sm text-muted-foreground">This may take a moment.</p>
                 </motion.div>
-            )}
-            </AnimatePresence>
-            
-            {!isGeneratingJoke && aiGeneratedJokes.length === 0 && (
-                 <div className="flex flex-col items-center justify-center min-h-[300px] lg:min-h-full bg-card rounded-lg border border-dashed p-8 text-center">
-                    <Sparkles className="h-10 w-10 text-primary mb-4" />
-                    <h3 className="text-xl font-semibold text-foreground">Joke Variations Appear Here</h3>
-                    <p className="mt-2 text-muted-foreground">Use the AI Assistant to generate a few options to get you started!</p>
-                </div>
-            )}
-          
-            {!isGeneratingJoke && aiGeneratedJokes.length > 0 && (
-                <div className="space-y-4">
+            ) : aiGeneratedJokes.length > 0 ? (
+                <motion.div key="joke-variations" className="space-y-4">
                     <h2 className="text-2xl font-bold text-center">Choose Your Favorite</h2>
                     <AnimatePresence>
                     {aiGeneratedJokes.map((joke, index) => (
@@ -264,10 +236,34 @@ export default function AddJokePage() {
                     </motion.div>
                     ))}
                     </AnimatePresence>
-                </div>
+                     {selectedJoke && (
+                        <p className="text-sm text-muted-foreground text-center pt-2">The selected joke has been filled into the form on the left.</p>
+                     )}
+                </motion.div>
+            ) : (
+                <motion.div key="add-joke-form">
+                     <Card>
+                        <CardHeader>
+                        <CardTitle className="text-lg flex items-center">
+                            <PlusCircle className="mr-2 h-5 w-5 text-primary"/> Your New Joke
+                        </CardTitle>
+                        <CardDescription className="text-sm">
+                            {selectedJoke ? "Review the selected joke, or fill in your own." : "Fill in the form to add a new joke manually."}
+                        </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                        <AddJokeForm
+                            onAddJoke={handleAddJokeAndRedirect}
+                            aiGeneratedText={selectedJoke?.jokeText}
+                            aiGeneratedCategory={selectedJoke?.category}
+                            onAiJokeSubmitted={() => { setSelectedJoke(null); setAiGeneratedJokes([]); }}
+                        />
+                        </CardContent>
+                    </Card>
+                </motion.div>
             )}
+            </AnimatePresence>
         </div>
-
       </div>
     </div>
   );
