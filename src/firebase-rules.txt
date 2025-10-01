@@ -1,4 +1,3 @@
-
 rules_version = '2';
 
 service cloud.firestore {
@@ -14,7 +13,7 @@ service cloud.firestore {
                       && request.resource.data.userId == request.auth.uid
                       && request.resource.data.text is string && request.resource.data.text.size() > 0
                       && request.resource.data.category is string && request.resource.data.category.size() > 0
-                      && (!('source' in request.resource.data) || (request.resource.data.source is string && request.resource.data.source.size() <= 100))
+                      && (!('source' in request.resource.data) || request.resource.data.source is string && request.resource.data.source.size() <= 100)
                       && request.resource.data.funnyRate is number
                       && request.resource.data.funnyRate >= 0 && request.resource.data.funnyRate <= 5
                       && request.resource.data.dateAdded is timestamp // Handled by server/Timestamp.now()
@@ -30,14 +29,16 @@ service cloud.firestore {
           // The owner cannot change these fields directly.
           request.resource.data.userId == resource.data.userId &&
           request.resource.data.dateAdded == resource.data.dateAdded &&
-          request.resource.data.averageRating == resource.data.averageRating &&
-          request.resource.data.ratingCount == resource.data.ratingCount &&
           // The fields an owner *can* change must be valid in their final state.
           request.resource.data.text is string && request.resource.data.text.size() > 0 &&
           request.resource.data.category is string && request.resource.data.category.size() > 0 &&
-          (!('source' in request.resource.data) || (request.resource.data.source is string && request.resource.data.source.size() <= 100)) &&
+          // Correctly validate the source field: it must be a string, and if it's not empty, its size must be <= 100
+          request.resource.data.source is string && request.resource.data.source.size() <= 100 &&
           request.resource.data.funnyRate is number && request.resource.data.funnyRate >= 0 && request.resource.data.funnyRate <= 5 &&
-          request.resource.data.used is bool
+          request.resource.data.used is bool &&
+          // Allow rating fields to be present, but not changed by the owner.
+          request.resource.data.averageRating == resource.data.averageRating &&
+          request.resource.data.ratingCount == resource.data.ratingCount
         ) ||
         // Condition 2: Any authenticated user triggers an update to rating fields ONLY.
         (
