@@ -100,7 +100,7 @@ const CSVImport: FC<CSVImportProps> = ({ onImport }) => {
         const textIndex = headers.indexOf('text');
         const categoryIndex = headers.indexOf('category');
         const funnyRateIndex = headers.indexOf('funnyrate');
-        // const dateAddedIndex = headers.indexOf('dateadded'); // Example: if you wanted to parse dateAdded
+        const sourceIndex = headers.indexOf('source');
 
         // Ensure essential columns are present
         if (textIndex === -1 || categoryIndex === -1) {
@@ -129,10 +129,13 @@ const CSVImport: FC<CSVImportProps> = ({ onImport }) => {
                 // Optionally, you could toast a warning for invalid rates here too
               }
             }
+            
+            const source = sourceIndex !== -1 ? values[sourceIndex]?.trim() : undefined;
 
             importedJokes.push({
               text: values[textIndex].trim(),
               category: values[categoryIndex].trim(),
+              source: source,
               funnyRate: rate,
             });
           } else {
@@ -195,7 +198,7 @@ const CSVImport: FC<CSVImportProps> = ({ onImport }) => {
       <CardHeader>
         <CardTitle>Import Jokes from CSV</CardTitle>
         <CardDescription>
-          Upload a CSV file with "text", "category" columns. Optionally include "funnyrate" (0-5).
+          Upload a CSV file with "text", "category" columns. Optionally include "funnyrate" (0-5) and "source".
           Headers are case-insensitive.
         </CardDescription>
       </CardHeader>

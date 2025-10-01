@@ -9,6 +9,7 @@ import { Plus, Loader2, ShieldAlert, Check, ChevronsUpDown } from 'lucide-react'
 import { useState, useMemo, useEffect } from 'react';
 
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,6 +30,7 @@ import { cn } from '@/lib/utils';
 const jokeFormSchema = z.object({
   text: z.string().min(1, 'Joke text cannot be empty.'),
   category: z.string().trim().min(1, 'Category cannot be empty. Type a new one or select from suggestions.'),
+  source: z.string().optional(),
 });
 
 export type JokeFormValues = z.infer<typeof jokeFormSchema>; // Exporting for use in parent
@@ -52,6 +54,7 @@ const AddJokeForm: FC<AddJokeFormProps> = ({ onAddJoke, aiGeneratedText, aiGener
     defaultValues: {
       text: '',
       category: '',
+      source: '',
     },
   });
 
@@ -215,6 +218,19 @@ const AddJokeForm: FC<AddJokeFormProps> = ({ onAddJoke, aiGeneratedText, aiGener
                       </Popover>
                      <FormMessage />
                   </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="source"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-xs">Source (Optional)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g., A friend, a book" {...field} disabled={isFormDisabled} className="text-sm h-9" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
               )}
             />
              {form.formState.errors.root && (

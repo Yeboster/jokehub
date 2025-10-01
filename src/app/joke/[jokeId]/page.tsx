@@ -5,7 +5,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { format } from 'date-fns';
-import { Loader2, ArrowLeft, ShieldAlert, CalendarDays, Tag, Star as StarIcon, Check, MessageSquare, Send, Users, Edit3, UserCircle } from 'lucide-react';
+import { Loader2, ArrowLeft, ShieldAlert, CalendarDays, Tag, Star as StarIcon, Check, MessageSquare, Send, Users, Edit3, UserCircle, BookOpen } from 'lucide-react';
 
 import type { Joke, UserRating } from '@/lib/types';
 import { useJokes } from '@/contexts/JokeContext';
@@ -246,8 +246,13 @@ export default function JokeShowPage() {
         <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-4 leading-tight">
           {joke.text}
         </h1>
-        <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground mb-6">
-          <Badge variant="secondary" className="bg-accent text-accent-foreground">{joke.category}</Badge>
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-sm text-muted-foreground mb-6">
+          <div className="flex items-center gap-3">
+            <Badge variant="secondary" className="bg-accent text-accent-foreground">{joke.category}</Badge>
+            {joke.source && (
+              <span className="flex items-center"><BookOpen className="mr-1.5 h-4 w-4 text-primary" /> Source: {joke.source}</span>
+            )}
+          </div>
           <div className="flex items-center gap-3">
             <span className="flex items-center"><CalendarDays className="mr-1.5 h-4 w-4 text-primary" /> {format(joke.dateAdded, 'MMM d, yyyy')}</span>
             <span className="flex items-center">
@@ -382,5 +387,3 @@ export default function JokeShowPage() {
     </div>
   );
 }
-
-    

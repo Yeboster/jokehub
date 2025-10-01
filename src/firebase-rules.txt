@@ -14,6 +14,7 @@ service cloud.firestore {
                       && request.resource.data.userId == request.auth.uid
                       && request.resource.data.text is string && request.resource.data.text.size() > 0
                       && request.resource.data.category is string && request.resource.data.category.size() > 0
+                      && (!('source' in request.resource.data) || (request.resource.data.source is string && request.resource.data.source.size() <= 100))
                       && request.resource.data.funnyRate is number
                       && request.resource.data.funnyRate >= 0 && request.resource.data.funnyRate <= 5
                       && request.resource.data.dateAdded is timestamp // Handled by server/Timestamp.now()
@@ -34,6 +35,7 @@ service cloud.firestore {
           // The fields an owner *can* change must be valid in their final state.
           request.resource.data.text is string && request.resource.data.text.size() > 0 &&
           request.resource.data.category is string && request.resource.data.category.size() > 0 &&
+          (!('source' in request.resource.data) || (request.resource.data.source is string && request.resource.data.source.size() <= 100)) &&
           request.resource.data.funnyRate is number && request.resource.data.funnyRate >= 0 && request.resource.data.funnyRate <= 5 &&
           request.resource.data.used is bool
         ) ||
@@ -45,6 +47,7 @@ service cloud.firestore {
           request.resource.data.dateAdded == resource.data.dateAdded &&
           request.resource.data.text == resource.data.text &&
           request.resource.data.category == resource.data.category &&
+          request.resource.data.source == resource.data.source &&
           request.resource.data.funnyRate == resource.data.funnyRate &&
           request.resource.data.used == resource.data.used &&
           // Validate the types of the rating fields.

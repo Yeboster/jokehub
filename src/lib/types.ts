@@ -3,6 +3,7 @@ export interface Joke {
   id: string;
   text: string;
   category: string; // Stores the category name
+  source?: string; // Optional field for the joke's source
   dateAdded: Date;
   used: boolean;
   funnyRate: number; // 0 for unrated, 1-5 for rating

@@ -13,6 +13,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useJokes } from '@/contexts/JokeContext';
 import Header from '@/components/header';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -43,6 +44,7 @@ import { cn } from '@/lib/utils';
 const editJokeFormSchema = z.object({
   text: z.string().min(1, 'Joke text cannot be empty.'),
   category: z.string().trim().min(1, 'Category cannot be empty. Type a new one or select from suggestions.'),
+  source: z.string().optional(),
   used: z.boolean().optional().default(false),
 });
 
@@ -66,7 +68,7 @@ export default function EditJokePage() {
 
   const form = useForm<EditJokeFormValues>({
     resolver: zodResolver(editJokeFormSchema),
-    defaultValues: { text: '', category: '', used: false },
+    defaultValues: { text: '', category: '', source: '', used: false },
   });
 
   useEffect(() => {
@@ -90,6 +92,7 @@ export default function EditJokePage() {
             form.reset({
               text: fetchedJoke.text,
               category: fetchedJoke.category,
+              source: fetchedJoke.source || '',
               used: fetchedJoke.used,
             });
             setCategorySearch(fetchedJoke.category);
@@ -122,7 +125,7 @@ export default function EditJokePage() {
         return;
     }
 
-     if (data.text === joke.text && data.category === joke.category && data.used === joke.used) {
+     if (data.text === joke.text && data.category === joke.category && data.source === joke.source && data.used === joke.used) {
          toast({ title: 'No Changes', description: 'No changes were made to the joke.' });
          router.push('/jokes');
          return;
@@ -287,6 +290,15 @@ export default function EditJokePage() {
                         </PopoverContent>
                       </Popover> <FormMessage />
                   </FormItem>
+              )} />
+              <FormField control={form.control} name="source" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Source (Optional)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g., A friend, a book" {...field} disabled={isFormDisabled} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
               )} />
                <FormField
                 control={form.control}

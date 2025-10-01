@@ -99,13 +99,14 @@ export async function fetchJokes(
 }
 
 export async function addJoke(
-  newJokeData: { text: string; category: string; funnyRate?: number },
+  newJokeData: { text: string; category: string; source?: string, funnyRate?: number },
   userId: string
 ) {
   const finalCategoryName = await ensureCategoryExists(newJokeData.category, userId);
   await addDoc(collection(db, JOKES_COLLECTION), {
     ...newJokeData,
     category: finalCategoryName,
+    source: newJokeData.source || '',
     funnyRate: newJokeData.funnyRate ?? 0,
     dateAdded: Timestamp.now(),
     used: false,
@@ -135,6 +136,7 @@ export async function importJokes(
     batch.set(docRef, {
       ...jokeData,
       category: finalCategoryName,
+      source: jokeData.source || '',
       funnyRate: jokeData.funnyRate ?? 0,
       dateAdded: Timestamp.now(),
       used: false,
@@ -204,6 +206,7 @@ async function getJokeDoc(jokeId: string) {
       dataToUpdate.category = await ensureCategoryExists(updatedData.category, userId);
     }
     if (updatedData.text !== undefined) dataToUpdate.text = updatedData.text;
+    if (updatedData.source !== undefined) dataToUpdate.source = updatedData.source;
     if (updatedData.funnyRate !== undefined) dataToUpdate.funnyRate = updatedData.funnyRate;
     if (updatedData.used !== undefined) dataToUpdate.used = updatedData.used;
   

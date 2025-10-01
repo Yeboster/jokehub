@@ -19,7 +19,7 @@ interface JokeContextProps {
   hasMoreJokes: boolean;
   loadingInitialJokes: boolean;
   loadingMoreJokes: boolean;
-  addJoke: (newJokeData: { text: string; category: string; funnyRate?: number }) => Promise<void>;
+  addJoke: (newJokeData: { text: string; category: string; source?: string; funnyRate?: number }) => Promise<void>;
   importJokes: (importedJokesData: Omit<Joke, 'id' | 'used' | 'dateAdded' | 'userId'>[]) => Promise<void>;
   toggleUsed: (id: string, currentUsedStatus: boolean) => Promise<void>;
   rateJoke: (id: string, rating: number) => Promise<void>;
@@ -188,7 +188,7 @@ export const JokeProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 
   const addJoke = useCallback(
-    (newJokeData: { text: string; category: string; funnyRate?: number }) => {
+    (newJokeData: { text: string; category: string; source?: string; funnyRate?: number }) => {
        if (!user) throw new Error("User not authenticated for adding joke.");
        return handleApiCall(() => jokeService.addJoke(newJokeData, user.uid), 'Joke added successfully!', true)!;
     },
