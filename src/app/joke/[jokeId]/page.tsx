@@ -5,7 +5,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { format } from 'date-fns';
-import { Loader2, ArrowLeft, ShieldAlert, CalendarDays, Tag, Star as StarIcon, Check, MessageSquare, Send, Users, Edit3, UserCircle, BookOpen } from 'lucide-react';
+import { Loader2, ArrowLeft, ShieldAlert, CalendarDays, Tag, Star as StarIcon, Check, MessageSquare, Send, Users, Edit3, UserCircle, BookOpen, ExternalLink } from 'lucide-react';
 
 import type { Joke, UserRating } from '@/lib/types';
 import { useJokes } from '@/contexts/JokeContext';
@@ -182,6 +182,16 @@ export default function JokeShowPage() {
     };
   }, [allUserRatings]);
 
+  const isSourceUrl = useMemo(() => {
+    if (!joke?.source) return false;
+    try {
+      const url = new URL(joke.source);
+      return url.protocol === 'http:' || url.protocol === 'https:';
+    } catch (e) {
+      return false;
+    }
+  }, [joke?.source]);
+
 
   if (isLoading || authLoading || loadingContext) {
     return (
@@ -250,7 +260,17 @@ export default function JokeShowPage() {
           <div className="flex items-center gap-3">
             <Badge variant="secondary" className="bg-accent text-accent-foreground">{joke.category}</Badge>
             {joke.source && (
-              <span className="flex items-center"><BookOpen className="mr-1.5 h-4 w-4 text-primary" /> Source: {joke.source}</span>
+                <span className="flex items-center">
+                    <BookOpen className="mr-1.5 h-4 w-4 text-primary" /> 
+                    {isSourceUrl ? (
+                         <a href={joke.source} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-primary underline hover:text-primary/80">
+                           <span>View Source</span>
+                           <ExternalLink className="h-3.5 w-3.5" />
+                         </a>
+                    ) : (
+                         <span>Source: {joke.source}</span>
+                    )}
+                </span>
             )}
           </div>
           <div className="flex items-center gap-3">
