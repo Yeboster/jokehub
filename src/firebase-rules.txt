@@ -35,10 +35,7 @@ service cloud.firestore {
           // Correctly validate the source field: it must be a string, and if it's not empty, its size must be <= 100
           request.resource.data.source is string && request.resource.data.source.size() <= 100 &&
           request.resource.data.funnyRate is number && request.resource.data.funnyRate >= 0 && request.resource.data.funnyRate <= 5 &&
-          request.resource.data.used is bool &&
-          // Allow rating fields to be present, but not changed by the owner.
-          request.resource.data.averageRating == resource.data.averageRating &&
-          request.resource.data.ratingCount == resource.data.ratingCount
+          request.resource.data.used is bool
         ) ||
         // Condition 2: Any authenticated user triggers an update to rating fields ONLY.
         (
