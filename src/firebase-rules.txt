@@ -13,7 +13,7 @@ service cloud.firestore {
                       && request.resource.data.userId == request.auth.uid
                       && request.resource.data.text is string && request.resource.data.text.size() > 0
                       && request.resource.data.category is string && request.resource.data.category.size() > 0
-                      && (!('source' in request.resource.data) || request.resource.data.source is string && request.resource.data.source.size() <= 100)
+                      && request.resource.data.source is string && request.resource.data.source.size() <= 100
                       && request.resource.data.funnyRate is number
                       && request.resource.data.funnyRate >= 0 && request.resource.data.funnyRate <= 5
                       && request.resource.data.dateAdded is timestamp // Handled by server/Timestamp.now()
@@ -26,18 +26,12 @@ service cloud.firestore {
         // Condition 1: The owner is updating the joke's content.
         (
           resource.data.userId == request.auth.uid &&
-          // The owner cannot change these fields directly.
+          // The owner cannot change the userId or the dateAdded.
           request.resource.data.userId == resource.data.userId &&
-          request.resource.data.dateAdded == resource.data.dateAdded &&
-          // The fields an owner *can* change must be valid in their final state.
-          request.resource.data.text is string && request.resource.data.text.size() > 0 &&
-          request.resource.data.category is string && request.resource.data.category.size() > 0 &&
-          // Correctly validate the source field: it must be a string, and if it's not empty, its size must be <= 100
-          request.resource.data.source is string && request.resource.data.source.size() <= 100 &&
-          request.resource.data.funnyRate is number && request.resource.data.funnyRate >= 0 && request.resource.data.funnyRate <= 5 &&
-          request.resource.data.used is bool
+          request.resource.data.dateAdded == resource.data.dateAdded
         ) ||
         // Condition 2: Any authenticated user triggers an update to rating fields ONLY.
+        // This is used by the rating service after a user submits/updates a rating.
         (
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['averageRating', 'ratingCount']) &&
           // Ensure other fields are not changed during a rating update.
