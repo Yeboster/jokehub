@@ -39,10 +39,11 @@ interface AddJokeFormProps {
   onAddJoke: (data: JokeFormValues) => Promise<void>;
   aiGeneratedText?: string | null;
   aiGeneratedCategory?: string | null;
+  aiGeneratedSource?: string | null;
   onAiJokeSubmitted?: () => void;
 }
 
-const AddJokeForm: FC<AddJokeFormProps> = ({ onAddJoke, aiGeneratedText, aiGeneratedCategory, onAiJokeSubmitted }) => {
+const AddJokeForm: FC<AddJokeFormProps> = ({ onAddJoke, aiGeneratedText, aiGeneratedCategory, aiGeneratedSource, onAiJokeSubmitted }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { user } = useAuth();
   const { categories, loadingInitialJokes: loadingCategories } = useJokes();
@@ -72,7 +73,13 @@ const AddJokeForm: FC<AddJokeFormProps> = ({ onAddJoke, aiGeneratedText, aiGener
         form.setValue('category', '', { shouldValidate: true });
         setCategorySearch('');
     }
-  }, [aiGeneratedText, aiGeneratedCategory, form]);
+
+    if (aiGeneratedSource) {
+      form.setValue('source', aiGeneratedSource, { shouldValidate: true });
+    } else if (aiGeneratedSource === null) {
+      form.setValue('source', '', { shouldValidate: true });
+    }
+  }, [aiGeneratedText, aiGeneratedCategory, aiGeneratedSource, form]);
 
   const onSubmit: SubmitHandler<JokeFormValues> = async (data) => {
     if (!user) {
