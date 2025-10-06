@@ -156,7 +156,7 @@ export default function AddJokePage() {
                     onAddJoke={handleAddJokeAndRedirect}
                     aiGeneratedText={selectedJoke?.jokeText}
                     aiGeneratedCategory={selectedJoke?.category}
-                    aiGeneratedSource={selectedJoke ? "AI Assistant" : null}
+                    aiGeneratedSource={selectedJoke ? "AI" : null}
                     onAiJokeSubmitted={() => { setSelectedJoke(null); setAiGeneratedJokes([]); }}
                 />
                 </CardContent>
