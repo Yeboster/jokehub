@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, Wand2, PlusCircle, ArrowLeft, ShieldAlert, Sparkles, CheckCircle } from 'lucide-react';
+import { Loader2, Wand2, PlusCircle, ArrowLeft, ShieldAlert, Sparkles, CheckCircle, Star } from 'lucide-react';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { useJokes } from '@/contexts/JokeContext';
@@ -19,6 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Slider } from '@/components/ui/slider';
+import * as jokeService from '@/services/jokeService';
 
 export default function AddJokePage() {
   const { user, loading: authLoading } = useAuth();
@@ -32,12 +33,38 @@ export default function AddJokePage() {
   const [selectedJoke, setSelectedJoke] = useState<JokeVariation | null>(null);
   const [selectedModel, setSelectedModel] = useState('googleai/gemini-2.5-flash');
   const [temperature, setTemperature] = useState([0.8]);
+  const [inspirationalJokes, setInspirationalJokes] = useState<string[]>([]);
+  const [isLoadingInspirationalJokes, setIsLoadingInspirationalJokes] = useState(false);
   
   useEffect(() => {
     if (!authLoading && !user) {
       router.push('/auth?redirect=/add-joke');
     }
   }, [user, authLoading, router]);
+
+  const handleLoadInspirationalJokes = async () => {
+    if (!user) {
+      toast({ title: 'Login Required', description: 'Please log in to load your 5-star jokes.', variant: 'destructive' });
+      return;
+    }
+    setIsLoadingInspirationalJokes(true);
+    try {
+      const jokes = await jokeService.fetchUserFiveStarJokes(user.uid);
+      if (jokes.length > 0) {
+        setInspirationalJokes(jokes);
+        toast({ title: 'Inspiration Loaded!', description: `${jokes.length} of your 5-star jokes will be used for inspiration.` });
+      } else {
+        setInspirationalJokes([]);
+        toast({ title: 'No 5-Star Jokes Found', description: 'You haven\'t rated any jokes with 5 stars yet.', variant: 'default' });
+      }
+    } catch (error: any) {
+      console.error("Error loading 5-star jokes:", error);
+      toast({ title: 'Error', description: error.message || 'Failed to load inspirational jokes.', variant: 'destructive' });
+    } finally {
+      setIsLoadingInspirationalJokes(false);
+    }
+  };
+
 
   const handleGenerateJoke = async () => {
     if (!user) {
@@ -48,7 +75,7 @@ export default function AddJokePage() {
     setSelectedJoke(null);
     try {
       const trimmedTopicHint = aiTopicHint.trim();
-      const prefilledJokes = aiGeneratedJokes.map(j => j.jokeText);
+      const prefilledJokes = [...aiGeneratedJokes.map(j => j.jokeText), ...inspirationalJokes];
 
       const response = await fetch('/api/generate-joke', {
         method: 'POST',
@@ -68,6 +95,7 @@ export default function AddJokePage() {
       }
       const result: GenerateJokeOutput = await response.json();
       setAiGeneratedJokes(result.jokes);
+      setInspirationalJokes([]); // Clear inspiration after use to avoid re-using them unintentionally
       toast({ title: 'Jokes Generated!', description: 'Choose your favorite from the new variations below.' });
     } catch (error: any) {
       console.error("Error generating joke via API:", error);
@@ -156,7 +184,7 @@ export default function AddJokePage() {
                     onAddJoke={handleAddJokeAndRedirect}
                     aiGeneratedText={selectedJoke?.jokeText}
                     aiGeneratedCategory={selectedJoke?.category}
-                    aiGeneratedSource={selectedJoke ? "AI" : null}
+                    aiGeneratedSource={selectedJoke ? "AI Assistant" : null}
                     onAiJokeSubmitted={() => { setSelectedJoke(null); setAiGeneratedJokes([]); }}
                 />
                 </CardContent>
@@ -282,6 +310,35 @@ export default function AddJokePage() {
                                 className="mt-1"
                                 />
                             </div>
+
+                            <div className="relative">
+                              <div className="absolute inset-0 flex items-center">
+                                <span className="w-full border-t" />
+                              </div>
+                              <div className="relative flex justify-center text-xs uppercase">
+                                <span className="bg-card px-2 text-muted-foreground">
+                                  Advanced
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Button
+                                    onClick={handleLoadInspirationalJokes}
+                                    disabled={isLoadingInspirationalJokes || isGeneratingJoke || !user}
+                                    variant="outline"
+                                    className="w-full"
+                                >
+                                    {isLoadingInspirationalJokes ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Star className="mr-2 h-4 w-4 text-yellow-400" />}
+                                    {isLoadingInspirationalJokes ? 'Loading Jokes...' : 'Load My 5-Star Jokes for Inspiration'}
+                                </Button>
+                                {inspirationalJokes.length > 0 && (
+                                    <p className="text-xs text-center text-muted-foreground">
+                                        {inspirationalJokes.length} joke{inspirationalJokes.length === 1 ? '' : 's'} will be used for inspiration.
+                                    </p>
+                                )}
+                            </div>
+
                             <Button
                                 onClick={handleGenerateJoke}
                                 disabled={isGeneratingJoke || !user}

@@ -238,3 +238,26 @@ async function getJokeDoc(jokeId: string) {
     // 3. Commit the batch operation
     await batch.commit();
   }
+
+  export async function fetchUserFiveStarJokes(userId: string): Promise<string[]> {
+    const ratingsQuery = query(
+      collection(db, JOKE_RATINGS_COLLECTION),
+      where('userId', '==', userId),
+      where('stars', '==', 5),
+      orderBy('updatedAt', 'desc'),
+      limit(10) // Limit to the last 10 5-star jokes for performance
+    );
+  
+    const ratingsSnapshot = await getDocs(ratingsQuery);
+    if (ratingsSnapshot.empty) {
+      return [];
+    }
+  
+    const jokeIds = ratingsSnapshot.docs.map(doc => doc.data().jokeId);
+    
+    // Firestore 'in' queries are limited to 30 items, but we're only fetching 10.
+    const jokesQuery = query(collection(db, JOKES_COLLECTION), where('__name__', 'in', jokeIds));
+    const jokesSnapshot = await getDocs(jokesQuery);
+  
+    return jokesSnapshot.docs.map(doc => doc.data().text);
+  }
