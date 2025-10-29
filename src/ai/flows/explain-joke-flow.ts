@@ -4,15 +4,12 @@
  * @fileOverview AI flow for explaining a joke.
  *
  * - explainJoke - A function that generates an explanation for a given joke.
- * - ExplainJokeInput - The input type for the explainJoke function.
  */
 import { ai } from '@/ai/ai-instance';
-import { z } from 'genkit';
 
-export const ExplainJokeInputSchema = z.object({
-  jokeText: z.string().describe('The text of the joke to be explained.'),
-});
-export type ExplainJokeInput = z.infer<typeof ExplainJokeInputSchema>;
+export interface ExplainJokeInput {
+  jokeText: string;
+}
 
 const systemInstruction = `You are a senior comedian trying to explain the jokes to the audience. Your tone should be insightful, a bit world-weary but still passionate about the craft of comedy.
 
