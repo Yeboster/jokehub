@@ -11,6 +11,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid input', details: parsedInput.error.format() }, { status: 400 });
     }
 
+    // Call the streaming function and return the response directly
     const jokeStream = await explainJokeStream(parsedInput.data);
 
     return new Response(jokeStream, {
@@ -19,8 +20,10 @@ export async function POST(request: NextRequest) {
         'Transfer-Encoding': 'chunked',
       },
     });
+
   } catch (error: any) {
     console.error('API Error explaining joke:', error);
+    // Ensure a clear error message is sent back to the client
     return NextResponse.json(
       { error: error.message || 'Failed to get joke explanation.' },
       { status: 500 }
