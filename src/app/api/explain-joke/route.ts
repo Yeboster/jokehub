@@ -1,6 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { explainJokeStream, ExplainJokeInputSchema } from '@/ai/flows/explain-joke-flow';
+import { explainJoke, ExplainJokeInputSchema } from '@/ai/flows/explain-joke-flow';
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,21 +11,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid input', details: parsedInput.error.format() }, { status: 400 });
     }
 
-    // Call the streaming function and return the response directly
-    const jokeStream = await explainJokeStream(parsedInput.data);
+    const explanation = await explainJoke(parsedInput.data);
 
-    return new Response(jokeStream, {
-      headers: {
-        'Content-Type': 'text/plain; charset=utf-8',
-        'Transfer-Encoding': 'chunked',
-      },
-    });
+    return NextResponse.json({ explanation });
 
   } catch (error: any) {
     console.error('API Error explaining joke:', error);
-    // Ensure a clear error message is sent back to the client
+    const errorMessage = error.message || 'Failed to get joke explanation.';
     return NextResponse.json(
-      { error: error.message || 'Failed to get joke explanation.' },
+      { error: errorMessage },
       { status: 500 }
     );
   }

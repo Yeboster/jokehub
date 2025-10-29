@@ -66,6 +66,32 @@ export default function JokeShowPage() {
     }
   };
 
+  const fetchExplanation = async (jokeText: string) => {
+    setExplanation('');
+    setIsExplanationLoading(true);
+    try {
+        const response = await fetch('/api/explain-joke', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ jokeText }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || `Failed to get explanation: ${response.statusText}`);
+        }
+        setExplanation(data.explanation);
+
+    } catch (error: any) {
+        console.error("Error fetching explanation:", error);
+        setExplanation("Sorry, I couldn't come up with an explanation right now.");
+    } finally {
+        setIsExplanationLoading(false);
+    }
+  };
+
+
   useEffect(() => {
     async function fetchJokeAndAllRatings() {
       if (!jokeId) {
@@ -84,7 +110,7 @@ export default function JokeShowPage() {
         const fetchedJoke = await getJokeById(jokeId);
         if (fetchedJoke) {
           setJoke(fetchedJoke);
-          streamExplanation(fetchedJoke.text);
+          fetchExplanation(fetchedJoke.text);
 
           // Fetch all ratings for this joke
           const allRatings = await fetchAllRatingsForJoke(jokeId);
@@ -134,36 +160,6 @@ export default function JokeShowPage() {
       setIsLoadingAllRatings(false);
     }
   }, [jokeId, user, getJokeById, fetchAllRatingsForJoke, loadingContext, authLoading]);
-
-  const streamExplanation = async (jokeText: string) => {
-    setExplanation('');
-    setIsExplanationLoading(true);
-    try {
-        const response = await fetch('/api/explain-joke', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ jokeText }),
-        });
-
-        if (!response.ok || !response.body) {
-            throw new Error(`Failed to get explanation: ${response.statusText}`);
-        }
-
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            const chunk = decoder.decode(value, { stream: true });
-            setExplanation((prev) => prev + chunk);
-        }
-    } catch (error: any) {
-        console.error("Error streaming explanation:", error);
-        setExplanation("Sorry, I couldn't come up with an explanation right now.");
-    } finally {
-        setIsExplanationLoading(false);
-    }
-};
 
 
   const handleRatingSubmit = async (e: React.FormEvent) => {
@@ -345,13 +341,13 @@ export default function JokeShowPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {isExplanationLoading && !explanation ? (
+          {isExplanationLoading ? (
             <div className="flex items-center text-muted-foreground">
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               <span>Thinking...</span>
             </div>
           ) : (
-            <p className="text-foreground/90 whitespace-pre-wrap leading-relaxed">{explanation}<span className={cn('inline-block w-2 h-4 bg-primary/70 animate-pulse ml-1', {'hidden': !isExplanationLoading})}></span></p>
+            <p className="text-foreground/90 whitespace-pre-wrap leading-relaxed">{explanation}</p>
           )}
         </CardContent>
       </Card>
