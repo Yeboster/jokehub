@@ -338,9 +338,9 @@ export default function JokeShowPage() {
       </section>
       
       {/* Joke Explanation Section */}
-      <Card className="shadow-lg mb-8 bg-amber-50 border-amber-200 dark:bg-amber-950 dark:border-amber-800">
+      <Card className="shadow-lg mb-8 bg-accent/50 border-primary/20">
         <CardHeader>
-          <CardTitle className="text-xl flex items-center gap-2 text-amber-800 dark:text-amber-200">
+          <CardTitle className="text-xl flex items-center gap-2 text-accent-foreground">
             <Lightbulb className="h-5 w-5" /> The Comedian's Take
           </CardTitle>
         </CardHeader>
