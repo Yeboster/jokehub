@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { format } from 'date-fns';
@@ -26,7 +26,7 @@ import { Switch } from '@/components/ui/switch';
 export default function JokeShowPage() {
   const params = useParams();
   const router = useRouter();
-  const { getJokeById, loadingInitialJokes: loadingContext, submitUserRating, getUserRatingForJoke, fetchAllRatingsForJoke, toggleUsed } = useJokes();
+  const { getJokeById, updateJoke, loadingInitialJokes: loadingContext, submitUserRating, getUserRatingForJoke, fetchAllRatingsForJoke, toggleUsed } = useJokes();
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
 
@@ -66,30 +66,47 @@ export default function JokeShowPage() {
     }
   };
 
-  const fetchExplanation = async (jokeText: string) => {
+  const streamExplanation = useCallback(async (jokeText: string, jokeId: string) => {
     setExplanation('');
     setIsExplanationLoading(true);
+
     try {
-        const response = await fetch('/api/explain-joke', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ jokeText }),
-        });
+      const response = await fetch('/api/explain-joke', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jokeId, jokeText }),
+      });
 
-        const data = await response.json();
+      if (!response.ok || !response.body) {
+        throw new Error(`Failed to get explanation: ${response.statusText}`);
+      }
 
-        if (!response.ok) {
-            throw new Error(data.error || `Failed to get explanation: ${response.statusText}`);
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let finalExplanation = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) {
+          break;
         }
-        setExplanation(data.explanation);
+        const chunk = decoder.decode(value, { stream: true });
+        finalExplanation += chunk;
+        setExplanation(prev => prev + chunk);
+      }
+      
+      // After stream is complete, cache the result
+      if (joke) {
+        await updateJoke(joke.id, { explanation: finalExplanation });
+      }
 
     } catch (error: any) {
-        console.error("Error fetching explanation:", error);
-        setExplanation("Sorry, I couldn't come up with an explanation right now.");
+      console.error("Error streaming explanation:", error);
+      setExplanation("Sorry, I couldn't come up with an explanation right now.");
     } finally {
-        setIsExplanationLoading(false);
+      setIsExplanationLoading(false);
     }
-  };
+  }, [joke, updateJoke]);
 
 
   useEffect(() => {
@@ -110,7 +127,13 @@ export default function JokeShowPage() {
         const fetchedJoke = await getJokeById(jokeId);
         if (fetchedJoke) {
           setJoke(fetchedJoke);
-          fetchExplanation(fetchedJoke.text);
+
+          if (fetchedJoke.explanation) {
+            setExplanation(fetchedJoke.explanation);
+          } else {
+            streamExplanation(fetchedJoke.text, fetchedJoke.id);
+          }
+          
 
           // Fetch all ratings for this joke
           const allRatings = await fetchAllRatingsForJoke(jokeId);
@@ -159,7 +182,7 @@ export default function JokeShowPage() {
       setIsLoadingCurrentUserRating(false);
       setIsLoadingAllRatings(false);
     }
-  }, [jokeId, user, getJokeById, fetchAllRatingsForJoke, loadingContext, authLoading]);
+  }, [jokeId, user, getJokeById, fetchAllRatingsForJoke, loadingContext, authLoading, streamExplanation]);
 
 
   const handleRatingSubmit = async (e: React.FormEvent) => {

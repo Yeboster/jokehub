@@ -1,34 +1,43 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { explainJoke, type ExplainJokeInput } from '@/ai/flows/explain-joke-flow';
+import { explainJoke } from '@/ai/flows/explain-joke-flow';
+import { updateJoke } from '@/services/jokeService';
 import { z } from 'zod';
 
-// Zod schema for input validation, moved from the flow file.
+// Zod schema for input validation
 const ExplainJokeInputSchema = z.object({
+  jokeId: z.string().optional(), // Keep jokeId optional for now
   jokeText: z.string().describe('The text of the joke to be explained.'),
 });
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    // Validate the request body against the schema
     const parsedInput = ExplainJokeInputSchema.safeParse(body);
 
     if (!parsedInput.success) {
       return NextResponse.json({ error: 'Invalid input', details: parsedInput.error.format() }, { status: 400 });
     }
 
-    // The data is now validated and typed as ExplainJokeInput
-    const explanation = await explainJoke(parsedInput.data);
+    // Call the streaming function
+    const stream = await explainJoke(parsedInput.data);
 
-    return NextResponse.json({ explanation });
+    // Return the stream directly to the client
+    return new NextResponse(stream, {
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+      },
+    });
 
   } catch (error: any) {
     console.error('API Error explaining joke:', error);
-    const errorMessage = error.message || 'Failed to get joke explanation.';
+    let errorMessage = 'Failed to get joke explanation.';
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    }
     return NextResponse.json(
       { error: errorMessage },
-      { status: 500 }
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
 }
