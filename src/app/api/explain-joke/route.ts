@@ -9,8 +9,6 @@ const ExplainJokeInputSchema = z.object({
   jokeText: z.string().describe('The text of the joke to be explained.'),
 });
 
-export const runtime = 'edge';
-
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();

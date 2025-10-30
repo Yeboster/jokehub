@@ -11,8 +11,6 @@ const ApiInputSchema = z.object({
   temperature: z.number().min(0).max(2).optional(),
 });
 
-export const runtime = 'edge';
-
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
