@@ -80,6 +80,8 @@ export default function JokeShowPage() {
         throw new Error(`Failed to get explanation: ${response.statusText}`);
       }
 
+      setIsExplanationLoading(false);
+
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let finalExplanation = '';
