@@ -17,6 +17,10 @@ const systemInstruction = `You are a senior comedian trying to explain the jokes
 
 Break down the joke's structure, identify the pun or the source of the humor, and explain why it works (or why it's a "groaner"). Keep the explanation concise, like a quick, witty aside during a comedy show. Do not just repeat the joke. Start directly with the explanation.`;
 
+
+// Try to force streaming
+export const dynamic = 'force-dynamic'
+
 /**
  * Generates an explanation for a joke and returns it as a stream.
  */
