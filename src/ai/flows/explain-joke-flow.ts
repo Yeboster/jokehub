@@ -6,8 +6,6 @@
  * - explainJoke - A function that generates an explanation for a given joke and returns it as a stream.
  */
 import { ai } from '@/ai/ai-instance';
-import type {NextRequest} from 'next/server';
-import {NextResponse} from 'next/server';
 import {z} from 'zod';
 
 const ExplainJokeInputSchema = z.object({
@@ -23,11 +21,10 @@ Break down the joke's structure, identify the pun or the source of the humor, an
  * Generates an explanation for a joke and returns it as a stream.
  */
 export async function explainJoke(input: ExplainJokeInput): Promise<ReadableStream<any>> {
-  const { stream } = await ai.generate({
-    model: 'googleai/gemini-2.5-flash',
+  const { stream } = ai.generateStream({
+    model: 'googleai/gemini-2.5-flash-lite',
     system: systemInstruction,
     prompt: `Explain this joke: "${input.jokeText}"`,
-    stream: true,
   });
 
   // Pipe the Genkit stream to a standard ReadableStream
@@ -36,7 +33,7 @@ export async function explainJoke(input: ExplainJokeInput): Promise<ReadableStre
       const encoder = new TextEncoder();
       for await (const chunk of stream) {
         if (chunk.content) {
-          controller.enqueue(encoder.encode(chunk.content));
+          controller.enqueue(encoder.encode(chunk.text));
         }
       }
       controller.close();

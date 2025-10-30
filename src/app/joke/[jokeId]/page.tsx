@@ -13,16 +13,14 @@ import { useAuth } from '@/contexts/AuthContext';
 // Header component is not used directly in this layout as per mockup.
 // import Header from '@/components/header'; 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import StarRating from '@/components/StarRating';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
-import * as jokeService from '@/services/jokeService';
 
 export default function JokeShowPage() {
   const params = useParams();
@@ -95,12 +93,7 @@ export default function JokeShowPage() {
         finalExplanation += chunk;
         setExplanation(prev => prev + chunk);
       }
-      
-      // After stream is complete, cache the result
-      if (jokeId) {
-        // We use the service directly here to avoid re-triggering context reloads
-        await jokeService.updateJoke(jokeId, { explanation: finalExplanation }, "server-process");
-      }
+    
 
     } catch (error: any) {
       console.error("Error streaming explanation:", error);
@@ -129,13 +122,7 @@ export default function JokeShowPage() {
         const fetchedJoke = await getJokeById(jokeId);
         if (fetchedJoke) {
           setJoke(fetchedJoke);
-
-          if (fetchedJoke.explanation) {
-            setExplanation(fetchedJoke.explanation);
-          } else {
-            streamExplanation(fetchedJoke.text, fetchedJoke.id);
-          }
-          
+          streamExplanation(fetchedJoke.text, fetchedJoke.id);
 
           // Fetch all ratings for this joke
           const allRatings = await fetchAllRatingsForJoke(jokeId);

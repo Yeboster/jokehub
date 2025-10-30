@@ -25,6 +25,8 @@ export async function POST(request: NextRequest) {
     return new NextResponse(stream, {
       headers: {
         'Content-Type': 'text/plain; charset=utf-8',
+        // This header is often required for Vercel to prevent buffering
+        'X-Content-Type-Options': 'nosniff',
       },
     });
 
