@@ -1,7 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { explainJoke } from '@/ai/flows/explain-joke-flow';
-import { updateJoke } from '@/services/jokeService';
 import { z } from 'zod';
 
 // Zod schema for input validation

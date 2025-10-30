@@ -22,11 +22,12 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
+import * as jokeService from '@/services/jokeService';
 
 export default function JokeShowPage() {
   const params = useParams();
   const router = useRouter();
-  const { getJokeById, updateJoke, loadingInitialJokes: loadingContext, submitUserRating, getUserRatingForJoke, fetchAllRatingsForJoke, toggleUsed } = useJokes();
+  const { getJokeById, loadingInitialJokes: loadingContext, submitUserRating, fetchAllRatingsForJoke, toggleUsed } = useJokes();
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
 
@@ -96,8 +97,9 @@ export default function JokeShowPage() {
       }
       
       // After stream is complete, cache the result
-      if (joke) {
-        await updateJoke(joke.id, { explanation: finalExplanation });
+      if (jokeId) {
+        // We use the service directly here to avoid re-triggering context reloads
+        await jokeService.updateJoke(jokeId, { explanation: finalExplanation }, "server-process");
       }
 
     } catch (error: any) {
@@ -106,7 +108,7 @@ export default function JokeShowPage() {
     } finally {
       setIsExplanationLoading(false);
     }
-  }, [joke, updateJoke]);
+  }, []); // Intentionally empty dependency array to break the re-render loop
 
 
   useEffect(() => {

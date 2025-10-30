@@ -3,7 +3,7 @@
 /**
  * @fileOverview AI flow for explaining a joke.
  *
- * - explainJoke - A function that generates an explanation for a given joke.
+ * - explainJoke - A function that generates an explanation for a given joke and returns it as a stream.
  */
 import { ai } from '@/ai/ai-instance';
 import type {NextRequest} from 'next/server';
