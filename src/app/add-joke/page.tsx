@@ -20,6 +20,7 @@ import { Badge } from '@/components/ui/badge';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Slider } from '@/components/ui/slider';
 import * as jokeService from '@/services/jokeService';
+import { Separator } from '@/components/ui/separator';
 
 export default function AddJokePage() {
   const { user, loading: authLoading } = useAuth();
@@ -73,9 +74,12 @@ export default function AddJokePage() {
     }
     setIsGeneratingJoke(true);
     setSelectedJoke(null);
+    setAiGeneratedJokes([]); // Clear previous jokes before generating new ones
     try {
       const trimmedTopicHint = aiTopicHint.trim();
-      const prefilledJokes = [...aiGeneratedJokes.map(j => j.jokeText), ...inspirationalJokes];
+      // Only include already generated jokes if we are NOT clearing them on re-generation.
+      // Since we are, prefilledJokes will primarily be from the inspirational set.
+      const prefilledJokes = [...inspirationalJokes];
 
       const response = await fetch('/api/generate-joke', {
         method: 'POST',
@@ -199,34 +203,113 @@ export default function AddJokePage() {
         <div className="lg:col-span-2">
             <Card>
                 <CardHeader>
-                <CardTitle className="text-lg flex items-center">
-                    <Wand2 className="mr-2 h-5 w-5 text-primary"/> AI Assistant
-                </CardTitle>
-                <CardDescription className="text-sm">
-                    Need inspiration? Generate three joke variations here.
-                </CardDescription>
+                  <CardTitle className="text-lg flex items-center">
+                      <Wand2 className="mr-2 h-5 w-5 text-primary"/> AI Assistant
+                  </CardTitle>
+                  <CardDescription className="text-sm">
+                      Use the controls to generate joke variations.
+                  </CardDescription>
                 </CardHeader>
-                <CardContent>
-                    <AnimatePresence mode="wait">
-                    {isGeneratingJoke ? (
-                        <motion.div
-                            key="loading"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="flex flex-col items-center justify-center min-h-[250px] bg-card rounded-lg border border-dashed"
+                <CardContent className="space-y-6">
+                    {/* --- AI Controls --- */}
+                    <div className="space-y-6">
+                        <div>
+                            <Label htmlFor="ai-model-select" className="text-sm font-medium">AI Model</Label>
+                            <Select value={selectedModel} onValueChange={setSelectedModel} disabled={isGeneratingJoke}>
+                            <SelectTrigger id="ai-model-select" className="mt-1">
+                                <SelectValue placeholder="Select a model" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="googleai/gemini-2.5-flash">Gemini 2.5 Flash (Fast)</SelectItem>
+                                <SelectItem value="googleai/gemini-2.5-pro">Gemini 2.5 Pro (Powerful)</SelectItem>
+                            </SelectContent>
+                            </Select>
+                        </div>
+                        <div>
+                            <div className="flex justify-between items-center mb-1">
+                                <Label htmlFor="temperature-slider" className="text-sm font-medium">Creativity (Temperature)</Label>
+                                <span className="text-sm font-mono text-muted-foreground">{temperature[0].toFixed(1)}</span>
+                            </div>
+                            <Slider
+                                id="temperature-slider"
+                                min={0}
+                                max={2}
+                                step={0.1}
+                                value={temperature}
+                                onValueChange={setTemperature}
+                                disabled={isGeneratingJoke}
+                            />
+                            <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                                <span>Predictable</span>
+                                <span>Creative</span>
+                                <span>Wild</span>
+                            </div>
+                        </div>
+                        <div>
+                            <Label htmlFor="ai-topic-hint-page" className="text-sm font-medium">Topic Hint (Optional)</Label>
+                            <Input
+                            id="ai-topic-hint-page"
+                            type="text"
+                            placeholder="e.g., animals, space"
+                            value={aiTopicHint}
+                            onChange={(e) => setAiTopicHint(e.target.value)}
+                            disabled={isGeneratingJoke}
+                            className="mt-1"
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Button
+                                onClick={handleLoadInspirationalJokes}
+                                disabled={isLoadingInspirationalJokes || isGeneratingJoke || !user}
+                                variant="outline"
+                                className="w-full"
+                            >
+                                {isLoadingInspirationalJokes ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Star className="mr-2 h-4 w-4 text-yellow-400" />}
+                                {isLoadingInspirationalJokes ? 'Loading Jokes...' : 'Load My 5-Star Jokes for Inspiration'}
+                            </Button>
+                            {inspirationalJokes.length > 0 && (
+                                <p className="text-xs text-center text-muted-foreground">
+                                    {inspirationalJokes.length} joke{inspirationalJokes.length === 1 ? '' : 's'} will be used for inspiration.
+                                </p>
+                            )}
+                        </div>
+
+                        <Button
+                            onClick={handleGenerateJoke}
+                            disabled={isGeneratingJoke || !user}
+                            className="w-full"
                         >
-                            <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
-                            <p className="text-lg font-medium text-muted-foreground">Generating witty humor...</p>
-                            <p className="text-sm text-muted-foreground">This may take a moment.</p>
-                        </motion.div>
-                    ) : aiGeneratedJokes.length > 0 ? (
+                            <Wand2 className="mr-2 h-4 w-4" />
+                            {aiGeneratedJokes.length > 0 ? 'Generate Again' : 'Generate 3 Jokes'}
+                        </Button>
+                    </div>
+                    
+                    <AnimatePresence>
+                      {isGeneratingJoke && (
+                          <motion.div
+                              key="loading"
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              exit={{ opacity: 0 }}
+                              className="flex flex-col items-center justify-center min-h-[200px] bg-card rounded-lg border border-dashed"
+                          >
+                              <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
+                              <p className="text-lg font-medium text-muted-foreground">Generating witty humor...</p>
+                              <p className="text-sm text-muted-foreground">This may take a moment.</p>
+                          </motion.div>
+                      )}
+                    </AnimatePresence>
+                    
+                    {aiGeneratedJokes.length > 0 && !isGeneratingJoke && (
+                      <>
+                        <Separator />
                         <motion.div key="joke-variations" className="space-y-4">
                             <h3 className="text-lg font-semibold text-center">Choose Your Favorite</h3>
                             <AnimatePresence>
                             {aiGeneratedJokes.map((joke, index) => (
                             <motion.div
-                                key={`${isGeneratingJoke}-${index}`} // Use a key that changes on regeneration
+                                key={`${joke.jokeText}-${index}`} // Key change to force re-animation
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, y: -20 }}
@@ -254,102 +337,9 @@ export default function AddJokePage() {
                             {selectedJoke && (
                                 <p className="text-sm text-muted-foreground text-center pt-2">The selected joke has been filled into the form on the left.</p>
                             )}
-                             <Button
-                                onClick={handleGenerateJoke}
-                                disabled={isGeneratingJoke || !user}
-                                className="w-full mt-4"
-                                variant="outline"
-                              >
-                                <Wand2 className="mr-2 h-4 w-4" />
-                                Generate Again
-                              </Button>
                         </motion.div>
-                    ) : (
-                        <motion.div key="ai-controls" className="space-y-6">
-                            <div>
-                                <Label htmlFor="ai-model-select" className="text-sm font-medium">AI Model</Label>
-                                <Select value={selectedModel} onValueChange={setSelectedModel} disabled={isGeneratingJoke}>
-                                <SelectTrigger id="ai-model-select" className="mt-1">
-                                    <SelectValue placeholder="Select a model" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="googleai/gemini-2.5-flash">Gemini 2.5 Flash (Fast)</SelectItem>
-                                    <SelectItem value="googleai/gemini-2.5-pro">Gemini 2.5 Pro (Powerful)</SelectItem>
-                                </SelectContent>
-                                </Select>
-                            </div>
-                            <div>
-                                <div className="flex justify-between items-center mb-1">
-                                    <Label htmlFor="temperature-slider" className="text-sm font-medium">Creativity (Temperature)</Label>
-                                    <span className="text-sm font-mono text-muted-foreground">{temperature[0].toFixed(1)}</span>
-                                </div>
-                                <Slider
-                                    id="temperature-slider"
-                                    min={0}
-                                    max={2}
-                                    step={0.1}
-                                    value={temperature}
-                                    onValueChange={setTemperature}
-                                    disabled={isGeneratingJoke}
-                                />
-                                <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                                    <span>Predictable</span>
-                                    <span>Creative</span>
-                                    <span>Wild</span>
-                                </div>
-                            </div>
-                            <div>
-                                <Label htmlFor="ai-topic-hint-page" className="text-sm font-medium">Topic Hint (Optional)</Label>
-                                <Input
-                                id="ai-topic-hint-page"
-                                type="text"
-                                placeholder="e.g., animals, space"
-                                value={aiTopicHint}
-                                onChange={(e) => setAiTopicHint(e.target.value)}
-                                disabled={isGeneratingJoke}
-                                className="mt-1"
-                                />
-                            </div>
-
-                            <div className="relative">
-                              <div className="absolute inset-0 flex items-center">
-                                <span className="w-full border-t" />
-                              </div>
-                              <div className="relative flex justify-center text-xs uppercase">
-                                <span className="bg-card px-2 text-muted-foreground">
-                                  Advanced
-                                </span>
-                              </div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <Button
-                                    onClick={handleLoadInspirationalJokes}
-                                    disabled={isLoadingInspirationalJokes || isGeneratingJoke || !user}
-                                    variant="outline"
-                                    className="w-full"
-                                >
-                                    {isLoadingInspirationalJokes ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Star className="mr-2 h-4 w-4 text-yellow-400" />}
-                                    {isLoadingInspirationalJokes ? 'Loading Jokes...' : 'Load My 5-Star Jokes for Inspiration'}
-                                </Button>
-                                {inspirationalJokes.length > 0 && (
-                                    <p className="text-xs text-center text-muted-foreground">
-                                        {inspirationalJokes.length} joke{inspirationalJokes.length === 1 ? '' : 's'} will be used for inspiration.
-                                    </p>
-                                )}
-                            </div>
-
-                            <Button
-                                onClick={handleGenerateJoke}
-                                disabled={isGeneratingJoke || !user}
-                                className="w-full"
-                            >
-                                <Wand2 className="mr-2 h-4 w-4" />
-                                Generate 3 Jokes
-                            </Button>
-                        </motion.div>
+                      </>
                     )}
-                    </AnimatePresence>
                 </CardContent>
             </Card>
         </div>
@@ -357,3 +347,5 @@ export default function AddJokePage() {
     </div>
   );
 }
+
+    
