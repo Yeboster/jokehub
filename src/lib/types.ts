@@ -10,6 +10,8 @@ export interface Joke {
   userId: string; // Added to associate joke with a user
   averageRating?: number;
   ratingCount?: number;
+  explanation?: string;
+  keywords?: string[];
 }
 
 export interface Category {
@@ -28,3 +30,5 @@ export interface UserRating {
   createdAt: Date; // Timestamp of when the rating was first created
   updatedAt: Date; // Timestamp of when the rating was last updated
 }
+
+    

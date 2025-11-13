@@ -1,7 +1,33 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    function canUpdateJoke(req, res) {
+      return req.auth != null && (
+        // Condition 1: The owner is updating the joke's content.
+        (
+          res.data.userId == req.auth.uid &&
+          // The owner cannot change the userId or the dateAdded.
+          req.resource.data.userId == res.data.userId &&
+          req.resource.data.dateAdded == res.data.dateAdded
+        ) ||
+        // Condition 2: Any authenticated user triggers an update to rating fields ONLY.
+        (
+          req.resource.data.diff(res.data).affectedKeys().hasOnly(['averageRating', 'ratingCount']) &&
+          req.resource.data.userId == res.data.userId &&
+          req.resource.data.text == res.data.text &&
+          req.resource.data.averageRating is number &&
+          req.resource.data.ratingCount is number
+        ) ||
+        // Condition 3: A server process is updating the explanation.
+        (
+          req.auth == null &&
+          req.resource.data.diff(res.data).affectedKeys().hasOnly(['explanation']) &&
+          req.resource.data.userId == res.data.userId
+        )
+      );
+    }
     // Jokes collection rules
     match /jokes/{jokeId} {
       // ANYONE can read jokes
@@ -18,35 +44,14 @@ service cloud.firestore {
                       && request.resource.data.funnyRate >= 0 && request.resource.data.funnyRate <= 5
                       && request.resource.data.dateAdded is timestamp // Handled by server/Timestamp.now()
                       && request.resource.data.used is bool
+                      && request.resource.data.keywords is list
                       && (!('averageRating' in request.resource.data) || request.resource.data.averageRating is number)
-                      && (!('ratingCount' in request.resource.data) || request.resource.data.ratingCount is number);
+                      && (!('ratingCount' in request.resource.data) || request.resource.data.ratingCount is number)
+                      && (!('explanation' in request.resource.data) || request.resource.data.explanation is string);
+
 
       // Update rules are split into two main cases: an owner editing, or the system updating ratings.
-      allow update: if request.auth != null && (
-        // Condition 1: The owner is updating the joke's content.
-        (
-          resource.data.userId == request.auth.uid &&
-          // The owner cannot change the userId or the dateAdded.
-          request.resource.data.userId == resource.data.userId &&
-          request.resource.data.dateAdded == resource.data.dateAdded
-        ) ||
-        // Condition 2: Any authenticated user triggers an update to rating fields ONLY.
-        // This is used by the rating service after a user submits/updates a rating.
-        (
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['averageRating', 'ratingCount']) &&
-          // Ensure other fields are not changed during a rating update.
-          request.resource.data.userId == resource.data.userId &&
-          request.resource.data.dateAdded == resource.data.dateAdded &&
-          request.resource.data.text == resource.data.text &&
-          request.resource.data.category == resource.data.category &&
-          request.resource.data.source == resource.data.source &&
-          request.resource.data.funnyRate == resource.data.funnyRate &&
-          request.resource.data.used == resource.data.used &&
-          // Validate the types of the rating fields.
-          request.resource.data.averageRating is number &&
-          request.resource.data.ratingCount is number
-        )
-      );
+      allow update: if canUpdateJoke(request, resource);
 
       // Owner can delete their joke.
       allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
@@ -100,3 +105,5 @@ service cloud.firestore {
     }
   }
 }
+
+    

@@ -25,11 +25,23 @@ const JOKES_COLLECTION = 'jokes';
 const JOKE_RATINGS_COLLECTION = 'jokeRatings';
 const PAGE_SIZE = 10;
 
+// Helper function to create keywords from a string
+const generateKeywords = (text: string): string[] => {
+  const words = text
+    .toLowerCase()
+    .split(/\s+/)
+    .map(word => word.replace(/[.,!?;:()"'`]/g, ''))
+    .filter(word => word.length > 2);
+  return Array.from(new Set(words)); // Return unique keywords
+};
+
+
 export interface FilterParams {
   selectedCategories: string[];
   filterFunnyRate: number;
   usageStatus: 'all' | 'used' | 'unused';
   scope: 'public' | 'user';
+  search: string;
 }
 
 function buildJokesQuery(
@@ -45,6 +57,10 @@ function buildJokesQuery(
 
   if (filters.scope === 'user' && userId) {
     queryConstraints.push(where('userId', '==', userId));
+  }
+
+  if (filters.search) {
+    queryConstraints.push(where('keywords', 'array-contains', filters.search.toLowerCase()));
   }
 
   if (filters.selectedCategories.length > 0) {
@@ -111,6 +127,7 @@ export async function addJoke(
     dateAdded: Timestamp.now(),
     used: false,
     userId: userId,
+    keywords: generateKeywords(newJokeData.text),
   });
 }
 
@@ -141,6 +158,7 @@ export async function importJokes(
       dateAdded: Timestamp.now(),
       used: false,
       userId: userId,
+      keywords: generateKeywords(jokeData.text),
     });
   }
   await batch.commit();
@@ -181,23 +199,35 @@ async function getJokeDoc(jokeId: string) {
   }
   
   export async function getJokeById(jokeId: string): Promise<Joke | null> {
-    const { ref } = await getJokeDoc(jokeId);
-    const docSnap = await getDoc(ref);
-    if (docSnap.exists()) {
-      const data = docSnap.data();
-      return { id: docSnap.id, ...data, dateAdded: (data.dateAdded as Timestamp).toDate() } as Joke;
+    try {
+        const { ref } = await getJokeDoc(jokeId);
+        const docSnap = await getDoc(ref);
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            return { id: docSnap.id, ...data, dateAdded: (data.dateAdded as Timestamp).toDate() } as Joke;
+        }
+        return null;
+    } catch (error) {
+        // If getJokeDoc throws 'Joke not found', we can catch it and return null.
+        if (error instanceof Error && error.message === 'Joke not found.') {
+            return null;
+        }
+        // Re-throw other unexpected errors
+        throw error;
     }
-    return null;
-  }
+}
   
   export async function updateJoke(
     jokeId: string,
-    updatedData: Partial<Joke>,
+    updatedData: Partial<Omit<Joke, 'id' | 'dateAdded' | 'userId' | 'keywords'>>,
     userId: string
   ) {
     const { ref, data } = await getJokeDoc(jokeId);
-    if (data.userId !== userId) {
-      throw new Error('You can only update your own jokes.');
+    // If a userId is passed (for caching), check if it's the server process
+    if (userId !== 'server-process') {
+        if (data.userId !== userId) {
+            throw new Error('You can only update your own jokes.');
+        }
     }
   
     const dataToUpdate: Record<string, any> = {};
@@ -205,10 +235,14 @@ async function getJokeDoc(jokeId: string) {
     if (updatedData.category) {
       dataToUpdate.category = await ensureCategoryExists(updatedData.category, userId);
     }
-    if (updatedData.text !== undefined) dataToUpdate.text = updatedData.text;
+    if (updatedData.text !== undefined) {
+        dataToUpdate.text = updatedData.text;
+        dataToUpdate.keywords = generateKeywords(updatedData.text);
+    }
     if (updatedData.source !== undefined) dataToUpdate.source = updatedData.source;
     if (updatedData.funnyRate !== undefined) dataToUpdate.funnyRate = updatedData.funnyRate;
     if (updatedData.used !== undefined) dataToUpdate.used = updatedData.used;
+    if (updatedData.explanation !== undefined) dataToUpdate.explanation = updatedData.explanation;
   
     if (Object.keys(dataToUpdate).length === 0) {
       return;
@@ -256,8 +290,10 @@ async function getJokeDoc(jokeId: string) {
     const jokeIds = ratingsSnapshot.docs.map(doc => doc.data().jokeId);
     
     // Firestore 'in' queries are limited to 30 items, but we're only fetching 10.
-    const jokesQuery = query(collection(db, JOKES_COLLECTION), where('__name__', 'in', jokeIds));
+    const jokesQuery = query(collection(db, 'jokes'), where('__name__', 'in', jokeIds));
     const jokesSnapshot = await getDocs(jokesQuery);
   
     return jokesSnapshot.docs.map(doc => doc.data().text);
   }
+
+    
