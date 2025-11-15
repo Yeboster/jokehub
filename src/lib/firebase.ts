@@ -2,6 +2,7 @@
 import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
 import { getFirestore, type Firestore } from 'firebase/firestore';
 import { getAuth, type Auth } from 'firebase/auth';
+import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -38,6 +39,20 @@ if (!firebaseConfig.apiKey || !firebaseConfig.authDomain || !firebaseConfig.proj
   } else {
     app = getApp();
   }
+
+  // Initialize App Check
+  if (app && typeof window !== 'undefined') {
+    try {
+      const appCheck = initializeAppCheck(app, {
+        provider: new ReCaptchaV3Provider(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!),
+        isTokenAutoRefreshEnabled: true
+      });
+      console.log('Firebase App Check initialized successfully.');
+    } catch(e: any) {
+      console.error("Firebase App Check initialization error:", e);
+    }
+  }
+
   db = getFirestore(app);
   // The getAuth() call itself can throw 'auth/invalid-api-key' if firebaseConfig.apiKey is present but deemed invalid by Firebase.
   auth = getAuth(app); 
